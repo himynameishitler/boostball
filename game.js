@@ -6123,5 +6123,3 @@ requestAnimationFrame(
 // giving a blue microwave pitch, yaw and boost was probably
 // not covered by its warranty.
 // ============================================================
-    goalText = "";
-}
