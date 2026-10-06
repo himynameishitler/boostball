@@ -11727,7 +11727,7 @@ const cameraPositionTarget =
     new THREE.Vector3();
 
 
-const cameraLookTarget =
+const cameraV063LookTarget =
     new THREE.Vector3();
 
 
@@ -11875,18 +11875,18 @@ function updateCamera(
         ballCamEnabled
     ) {
 
-        cameraLookTarget
+        cameraV063LookTarget
             .copy(
                 ball.position
             );
 
 
-        cameraLookTarget.y +=
+        cameraV063LookTarget.y +=
             0.45;
 
     } else {
 
-        cameraLookTarget
+        cameraV063LookTarget
             .copy(
                 car.position
             )
@@ -11896,7 +11896,7 @@ function updateCamera(
             );
 
 
-        cameraLookTarget.y +=
+        cameraV063LookTarget.y +=
             1.25;
     }
 
@@ -11915,7 +11915,7 @@ function updateCamera(
 
 
         cameraSmoothedLook.copy(
-            cameraLookTarget
+            cameraV063LookTarget
         );
 
 
@@ -11949,7 +11949,7 @@ function updateCamera(
 
 
     cameraSmoothedLook.lerp(
-        cameraLookTarget,
+        cameraV063LookTarget,
         lookBlend
     );
 
