@@ -1,12 +1,11 @@
 // ============================================================
-//                     BOOSTBALL v0.3
-//                  THE SECOND BEAST
+// BOOSTBALL v0.4 — NEWTON'S REVENGE
 // ============================================================
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
 // ============================================================
-// RENDERER / SCENE
+// BASIC SETUP
 // ============================================================
 
 const canvas = document.getElementById("game");
@@ -24,11 +23,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 
 scene.background = new THREE.Color(0x07111f);
-scene.fog = new THREE.Fog(0x07111f, 100, 190);
-
-// ============================================================
-// CAMERA
-// ============================================================
+scene.fog = new THREE.Fog(0x07111f, 140, 240);
 
 const camera = new THREE.PerspectiveCamera(
     72,
@@ -43,47 +38,46 @@ camera.position.set(-14, 7, 0);
 // LIGHTING
 // ============================================================
 
-const hemisphere = new THREE.HemisphereLight(
-    0xd8f2ff,
-    0x16351d,
-    2.4
+scene.add(
+    new THREE.HemisphereLight(
+        0xd8f2ff,
+        0x16351d,
+        2.4
+    )
 );
-
-scene.add(hemisphere);
 
 const sun = new THREE.DirectionalLight(
     0xffffff,
     3
 );
 
-sun.position.set(-30, 50, 25);
+sun.position.set(-35, 60, 30);
 sun.castShadow = true;
 
-sun.shadow.mapSize.width = 2048;
-sun.shadow.mapSize.height = 2048;
+sun.shadow.mapSize.set(2048, 2048);
 
-sun.shadow.camera.left = -100;
-sun.shadow.camera.right = 100;
-sun.shadow.camera.top = 70;
-sun.shadow.camera.bottom = -70;
+sun.shadow.camera.left = -120;
+sun.shadow.camera.right = 120;
+sun.shadow.camera.top = 100;
+sun.shadow.camera.bottom = -100;
 
 scene.add(sun);
 
 // ============================================================
-// ARENA CONSTANTS
+// ARENA
 // ============================================================
 
-const FIELD_LENGTH = 120;
-const FIELD_WIDTH = 72;
+const FIELD_LENGTH = 154;
+const FIELD_WIDTH = 92;
 
 const HALF_LENGTH = FIELD_LENGTH / 2;
 const HALF_WIDTH = FIELD_WIDTH / 2;
 
-const WALL_HEIGHT = 7;
+const WALL_HEIGHT = 15;
 
-const GOAL_WIDTH = 22;
-const GOAL_HEIGHT = 10;
-const GOAL_DEPTH = 9;
+const GOAL_WIDTH = 29;
+const GOAL_HEIGHT = 13;
+const GOAL_DEPTH = 12;
 
 const BALL_RADIUS = 1.8;
 
@@ -108,25 +102,36 @@ field.receiveShadow = true;
 scene.add(field);
 
 // ============================================================
-// FIELD LINES
+// FIELD MARKINGS
 // ============================================================
 
 const lineMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.85
 });
 
-const centreLine = new THREE.Mesh(
-    new THREE.PlaneGeometry(
-        0.22,
-        FIELD_WIDTH
-    ),
-    lineMaterial
-);
+function groundLine(width, depth, x, z) {
 
-centreLine.rotation.x = -Math.PI / 2;
-centreLine.position.y = 0.03;
+    const line = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, depth),
+        lineMaterial
+    );
 
-scene.add(centreLine);
+    line.rotation.x = -Math.PI / 2;
+
+    line.position.set(
+        x,
+        0.025,
+        z
+    );
+
+    scene.add(line);
+
+}
+
+// Halfway line
+groundLine(0.22, FIELD_WIDTH, 0, 0);
 
 // Centre circle
 
@@ -135,43 +140,70 @@ const circlePoints = [];
 for (let i = 0; i <= 100; i++) {
 
     const angle =
-        (i / 100) *
+        i / 100 *
         Math.PI *
         2;
 
     circlePoints.push(
         new THREE.Vector3(
-            Math.cos(angle) * 9,
-            0.04,
-            Math.sin(angle) * 9
+            Math.cos(angle) * 10,
+            0.035,
+            Math.sin(angle) * 10
         )
     );
 
 }
 
-const circleGeometry =
-    new THREE.BufferGeometry()
-        .setFromPoints(circlePoints);
-
-const centreCircle =
+scene.add(
     new THREE.Line(
-        circleGeometry,
+        new THREE.BufferGeometry()
+            .setFromPoints(circlePoints),
+
         new THREE.LineBasicMaterial({
             color: 0xffffff
         })
-    );
+    )
+);
 
-scene.add(centreCircle);
+// Goal-area reference markings
+
+groundLine(
+    16,
+    0.18,
+    -HALF_LENGTH + 13,
+    GOAL_WIDTH / 2 + 4
+);
+
+groundLine(
+    16,
+    0.18,
+    -HALF_LENGTH + 13,
+    -GOAL_WIDTH / 2 - 4
+);
+
+groundLine(
+    16,
+    0.18,
+    HALF_LENGTH - 13,
+    GOAL_WIDTH / 2 + 4
+);
+
+groundLine(
+    16,
+    0.18,
+    HALF_LENGTH - 13,
+    -GOAL_WIDTH / 2 - 4
+);
 
 // ============================================================
-// ARENA WALLS
+// WALLS
 // ============================================================
 
 const glassMaterial =
     new THREE.MeshStandardMaterial({
-        color: 0x9adfff,
+        color: 0x8fdcff,
         transparent: true,
-        opacity: 0.16,
+        opacity: 0.20,
         roughness: 0.25
     });
 
@@ -201,14 +233,15 @@ function createWall(
     scene.add(wall);
 
     return wall;
+
 }
 
-// Long side walls
+// Side barriers
 
 createWall(
     FIELD_LENGTH + 1,
     WALL_HEIGHT,
-    0.5,
+    0.6,
     0,
     WALL_HEIGHT / 2,
     HALF_WIDTH
@@ -217,51 +250,45 @@ createWall(
 createWall(
     FIELD_LENGTH + 1,
     WALL_HEIGHT,
-    0.5,
+    0.6,
     0,
     WALL_HEIGHT / 2,
     -HALF_WIDTH
 );
 
-// ============================================================
-// END WALLS AROUND GOALS
-// ============================================================
+// End wall pieces
 
-const sideOfGoalWidth =
+const endPieceDepth =
     (FIELD_WIDTH - GOAL_WIDTH) / 2;
 
-function createEndWallPieces(x) {
+function createEndWalls(x) {
 
-    const leftZ =
+    const offset =
         GOAL_WIDTH / 2 +
-        sideOfGoalWidth / 2;
-
-    const rightZ =
-        -GOAL_WIDTH / 2 -
-        sideOfGoalWidth / 2;
+        endPieceDepth / 2;
 
     createWall(
-        0.5,
+        0.6,
         WALL_HEIGHT,
-        sideOfGoalWidth,
+        endPieceDepth,
         x,
         WALL_HEIGHT / 2,
-        leftZ
+        offset
     );
 
     createWall(
-        0.5,
+        0.6,
         WALL_HEIGHT,
-        sideOfGoalWidth,
+        endPieceDepth,
         x,
         WALL_HEIGHT / 2,
-        rightZ
+        -offset
     );
 
 }
 
-createEndWallPieces(-HALF_LENGTH);
-createEndWallPieces(HALF_LENGTH);
+createEndWalls(-HALF_LENGTH);
+createEndWalls(HALF_LENGTH);
 
 // ============================================================
 // GOALS
@@ -269,77 +296,74 @@ createEndWallPieces(HALF_LENGTH);
 
 function createGoal(side, colour) {
 
-    const goalX =
+    const mouthX =
         side * HALF_LENGTH;
 
+    const centreX =
+        mouthX +
+        side * GOAL_DEPTH / 2;
+
     const backX =
-        goalX +
+        mouthX +
         side * GOAL_DEPTH;
 
-    const goalMaterial =
+    const transparent =
         new THREE.MeshStandardMaterial({
             color: colour,
             transparent: true,
-            opacity: 0.30
+            opacity: 0.32
         });
 
-    const solidGoalMaterial =
+    const frame =
         new THREE.MeshStandardMaterial({
             color: colour,
-            transparent: true,
-            opacity: 0.45
+            roughness: 0.35
         });
 
-    // Back wall
-
+    // Back
     createWall(
-        0.6,
+        0.7,
         GOAL_HEIGHT,
         GOAL_WIDTH,
         backX,
         GOAL_HEIGHT / 2,
         0,
-        goalMaterial
+        transparent
     );
 
     // Roof
-
     createWall(
         GOAL_DEPTH,
-        0.5,
+        0.6,
         GOAL_WIDTH,
-        goalX + side * GOAL_DEPTH / 2,
+        centreX,
         GOAL_HEIGHT,
         0,
-        goalMaterial
+        transparent
     );
 
-    // Side wall 1
-
+    // Goal sides
     createWall(
         GOAL_DEPTH,
         GOAL_HEIGHT,
-        0.5,
-        goalX + side * GOAL_DEPTH / 2,
+        0.6,
+        centreX,
         GOAL_HEIGHT / 2,
         GOAL_WIDTH / 2,
-        goalMaterial
+        transparent
     );
-
-    // Side wall 2
 
     createWall(
         GOAL_DEPTH,
         GOAL_HEIGHT,
-        0.5,
-        goalX + side * GOAL_DEPTH / 2,
+        0.6,
+        centreX,
         GOAL_HEIGHT / 2,
         -GOAL_WIDTH / 2,
-        goalMaterial
+        transparent
     );
 
     // Posts
-
     for (const z of [
         -GOAL_WIDTH / 2,
         GOAL_WIDTH / 2
@@ -347,15 +371,15 @@ function createGoal(side, colour) {
 
         const post = new THREE.Mesh(
             new THREE.BoxGeometry(
-                0.65,
+                0.8,
                 GOAL_HEIGHT,
-                0.65
+                0.8
             ),
-            solidGoalMaterial
+            frame
         );
 
         post.position.set(
-            goalX,
+            mouthX,
             GOAL_HEIGHT / 2,
             z
         );
@@ -365,18 +389,17 @@ function createGoal(side, colour) {
     }
 
     // Crossbar
-
     const crossbar = new THREE.Mesh(
         new THREE.BoxGeometry(
-            0.65,
-            0.65,
+            0.8,
+            0.8,
             GOAL_WIDTH
         ),
-        solidGoalMaterial
+        frame
     );
 
     crossbar.position.set(
-        goalX,
+        mouthX,
         GOAL_HEIGHT,
         0
     );
@@ -415,8 +438,6 @@ body.castShadow = true;
 
 car.add(body);
 
-// Nose
-
 const nose = new THREE.Mesh(
     new THREE.BoxGeometry(
         1.2,
@@ -428,17 +449,10 @@ const nose = new THREE.Mesh(
     })
 );
 
-nose.position.set(
-    2.15,
-    0.72,
-    0
-);
-
+nose.position.set(2.15, 0.72, 0);
 nose.castShadow = true;
 
 car.add(nose);
-
-// Cabin
 
 const cabin = new THREE.Mesh(
     new THREE.BoxGeometry(
@@ -448,17 +462,11 @@ const cabin = new THREE.Mesh(
     ),
     new THREE.MeshStandardMaterial({
         color: 0xa4ecff,
-        roughness: 0.2,
-        metalness: 0.15
+        roughness: 0.2
     })
 );
 
-cabin.position.set(
-    -0.25,
-    1.72,
-    0
-);
-
+cabin.position.set(-0.25, 1.72, 0);
 cabin.castShadow = true;
 
 car.add(cabin);
@@ -469,6 +477,17 @@ car.add(cabin);
 
 const wheels = [];
 
+const wheelGeometry =
+    new THREE.CylinderGeometry(
+        0.55,
+        0.55,
+        0.45,
+        20
+    );
+
+// Bake the orientation directly into geometry.
+wheelGeometry.rotateX(Math.PI / 2);
+
 const wheelMaterial =
     new THREE.MeshStandardMaterial({
         color: 0x111111,
@@ -477,39 +496,18 @@ const wheelMaterial =
 
 function createWheel(x, z) {
 
-    const wheelHolder =
-        new THREE.Group();
-
-    wheelHolder.position.set(
-        x,
-        0.55,
-        z
+    const wheel = new THREE.Mesh(
+        wheelGeometry.clone(),
+        wheelMaterial
     );
 
-    const wheel =
-        new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                0.55,
-                0.55,
-                0.45,
-                20
-            ),
-            wheelMaterial
-        );
-
-    // Axle goes across the car
-    wheel.rotation.x =
-        Math.PI / 2;
+    wheel.position.set(x, 0.55, z);
 
     wheel.castShadow = true;
 
-    wheelHolder.add(wheel);
-    car.add(wheelHolder);
+    car.add(wheel);
 
-    wheels.push({
-        holder: wheelHolder,
-        mesh: wheel
-    });
+    wheels.push(wheel);
 
 }
 
@@ -519,6 +517,29 @@ createWheel(1.35, -1.2);
 createWheel(1.35, 1.2);
 
 scene.add(car);
+
+// ============================================================
+// BALL
+// ============================================================
+
+const ball = new THREE.Mesh(
+    new THREE.SphereGeometry(
+        BALL_RADIUS,
+        32,
+        24
+    ),
+    new THREE.MeshStandardMaterial({
+        color: 0xf7f7f7,
+        roughness: 0.5
+    })
+);
+
+ball.castShadow = true;
+
+scene.add(ball);
+
+const ballVelocity =
+    new THREE.Vector3();
 
 // ============================================================
 // CAR PHYSICS
@@ -535,225 +556,58 @@ let grounded = true;
 
 let boostAmount = 33;
 
-const acceleration = 30;
-const reverseAcceleration = 18;
-const brakingPower = 38;
+// Engine
+const ACCELERATION = 29;
+const REVERSE_ACCELERATION = 18;
+const BRAKING = 34;
 
-const maxSpeed = 28;
-const boostMaxSpeed = 43;
-const boostAcceleration = 50;
+// Speeds
+const DRIVE_TOP_SPEED = 29;
+const REVERSE_TOP_SPEED = 15;
+const BOOST_TOP_SPEED = 45;
 
-const rollingResistance = 0.985;
+// Boost
+const BOOST_ACCELERATION = 43;
+const BOOST_USAGE = 33;
 
-// ============================================================
-// BALL
-// ============================================================
+// Ground physics
+const NORMAL_GRIP = 7.0;
+const POWERSLIDE_GRIP = 1.15;
 
-const ball = new THREE.Mesh(
-    new THREE.SphereGeometry(
-        BALL_RADIUS,
-        32,
-        24
-    ),
-    new THREE.MeshStandardMaterial({
-        color: 0xf7f7f7,
-        roughness: 0.45
-    })
-);
+const COAST_DRAG = 0.18;
+const POWERED_DRAG = 0.06;
 
-ball.castShadow = true;
+// Air
+const GRAVITY = 27;
 
-scene.add(ball);
+// Steering
+const LOW_SPEED_STEER = 2.65;
+const HIGH_SPEED_STEER = 1.65;
 
-const ballVelocity =
-    new THREE.Vector3();
+const POWERSLIDE_STEER_MULTIPLIER = 1.35;
 
 // ============================================================
-// BOOST PADS
+// CONTROL BINDINGS
 // ============================================================
 
-const boostPads = [];
+const controls = {
 
-const smallPadMaterial =
-    new THREE.MeshStandardMaterial({
-        color: 0xffc72c,
-        emissive: 0x6a3a00,
-        emissiveIntensity: 1.4
-    });
+    throttle: "w",
+    reverse: "s",
+    left: "a",
+    right: "d",
 
-const bigPadMaterial =
-    new THREE.MeshStandardMaterial({
-        color: 0xff8c18,
-        emissive: 0x7d2900,
-        emissiveIntensity: 1.8
-    });
+    jump: " ",
+    boost: "shift",
 
-function createBoostPad(
-    x,
-    z,
-    big = false
-) {
+    powerslide: "control",
 
-    const group =
-        new THREE.Group();
+    ballCam: "c",
+    reset: "r",
 
-    group.position.set(
-        x,
-        0.12,
-        z
-    );
+    menu: "tab"
 
-    const base =
-        new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                big ? 1.65 : 1.05,
-                big ? 1.65 : 1.05,
-                0.18,
-                24
-            ),
-            big
-                ? bigPadMaterial
-                : smallPadMaterial
-        );
-
-    group.add(base);
-
-    const orb =
-        new THREE.Mesh(
-            new THREE.OctahedronGeometry(
-                big ? 0.75 : 0.42
-            ),
-            big
-                ? bigPadMaterial
-                : smallPadMaterial
-        );
-
-    orb.position.y =
-        big ? 1.15 : 0.72;
-
-    group.add(orb);
-
-    scene.add(group);
-
-    boostPads.push({
-        group,
-        orb,
-        big,
-        active: true,
-        respawnTimer: 0
-    });
-
-}
-
-// ------------------------------------------------------------
-// Small pads
-// ------------------------------------------------------------
-
-// Centre line
-createBoostPad(0, 0);
-createBoostPad(0, 18);
-createBoostPad(0, -18);
-
-// Blue half
-createBoostPad(-22, 0);
-createBoostPad(-22, 20);
-createBoostPad(-22, -20);
-
-createBoostPad(-42, 10);
-createBoostPad(-42, -10);
-
-// Orange half
-createBoostPad(22, 0);
-createBoostPad(22, 20);
-createBoostPad(22, -20);
-
-createBoostPad(42, 10);
-createBoostPad(42, -10);
-
-// Diagonal pads
-createBoostPad(-12, 10);
-createBoostPad(-12, -10);
-
-createBoostPad(12, 10);
-createBoostPad(12, -10);
-
-// ------------------------------------------------------------
-// BIG pads
-// ------------------------------------------------------------
-
-createBoostPad(-48, 29, true);
-createBoostPad(-48, -29, true);
-
-createBoostPad(48, 29, true);
-createBoostPad(48, -29, true);
-
-// Midfield big pads
-createBoostPad(0, 30, true);
-createBoostPad(0, -30, true);
-
-// ============================================================
-// GAME STATE
-// ============================================================
-
-let blueScore = 0;
-let orangeScore = 0;
-
-let gameTime = 300;
-
-let ballCam = true;
-
-let goalPause = false;
-let goalPauseTimer = 0;
-
-let goalText = "";
-
-let lastTime =
-    performance.now();
-
-// ============================================================
-// HUD
-// ============================================================
-
-const hud =
-    document.getElementById("hud");
-
-hud.innerHTML = `
-    <h1>BOOSTBALL</h1>
-
-    <p id="score">
-        Blue 0 - 0 Orange
-    </p>
-
-    <p id="timer">
-        5:00
-    </p>
-
-    <p id="boost">
-        BOOST: 33
-    </p>
-
-    <p id="cameraMode"
-       style="font-size:14px;">
-        BALL CAM
-    </p>
-
-    <div
-        id="goalMessage"
-        style="
-            font-size:48px;
-            font-weight:bold;
-            margin-top:20px;
-            min-height:60px;
-        ">
-    </div>
-
-    <p style="
-        font-size:13px;
-        opacity:0.7;
-    ">
-        WASD Drive • Space Jump • Shift Boost • C Camera • R Reset
-    </p>
-`;
+};
 
 // ============================================================
 // INPUT
@@ -762,12 +616,39 @@ hud.innerHTML = `
 const keys = {};
 const pressed = {};
 
+let menuOpen = false;
+
 window.addEventListener(
     "keydown",
     event => {
 
         const key =
             event.key.toLowerCase();
+
+        // TAB MENU
+        if (
+            key === controls.menu &&
+            !pressed[key]
+        ) {
+
+            event.preventDefault();
+
+            menuOpen = !menuOpen;
+
+            updateMenu();
+
+            pressed[key] = true;
+
+            return;
+
+        }
+
+        if (menuOpen) {
+
+            event.preventDefault();
+            return;
+
+        }
 
         keys[key] = true;
 
@@ -776,7 +657,7 @@ window.addEventListener(
             pressed[key] = true;
 
             if (
-                key === " " &&
+                key === controls.jump &&
                 !goalPause
             ) {
 
@@ -784,14 +665,17 @@ window.addEventListener(
 
             }
 
-            if (key === "c") {
+            if (
+                key === controls.ballCam
+            ) {
 
-                ballCam =
-                    !ballCam;
+                ballCam = !ballCam;
 
             }
 
-            if (key === "r") {
+            if (
+                key === controls.reset
+            ) {
 
                 resetKickoff();
 
@@ -801,6 +685,7 @@ window.addEventListener(
 
         if (
             key === " " ||
+            key === "tab" ||
             key.startsWith("arrow")
         ) {
 
@@ -825,29 +710,473 @@ window.addEventListener(
 );
 
 // ============================================================
+// BOOST PADS
+// ============================================================
+
+const boostPads = [];
+
+const decalMaterialSmall =
+    new THREE.MeshBasicMaterial({
+        color: 0xd6a728,
+        transparent: true,
+        opacity: 0.65,
+        side: THREE.DoubleSide
+    });
+
+const decalMaterialBig =
+    new THREE.MeshBasicMaterial({
+        color: 0xff8c18,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+    });
+
+const pickupMaterialSmall =
+    new THREE.MeshStandardMaterial({
+        color: 0xffc72c,
+        emissive: 0x6a3a00,
+        emissiveIntensity: 1.4
+    });
+
+const pickupMaterialBig =
+    new THREE.MeshStandardMaterial({
+        color: 0xff8c18,
+        emissive: 0x7d2900,
+        emissiveIntensity: 2
+    });
+
+function createBoostPad(x, z, big = false) {
+
+    // --------------------------------------------------------
+    // PERMANENT FLOOR DECAL
+    // --------------------------------------------------------
+
+    const decal = new THREE.Mesh(
+        new THREE.RingGeometry(
+            big ? 1.35 : 0.8,
+            big ? 2.1 : 1.35,
+            32
+        ),
+        big
+            ? decalMaterialBig
+            : decalMaterialSmall
+    );
+
+    decal.rotation.x =
+        -Math.PI / 2;
+
+    decal.position.set(
+        x,
+        0.04,
+        z
+    );
+
+    scene.add(decal);
+
+    // Inner marker
+    const marker = new THREE.Mesh(
+        new THREE.CircleGeometry(
+            big ? 1.1 : 0.62,
+            24
+        ),
+        new THREE.MeshBasicMaterial({
+            color: big
+                ? 0x7c4915
+                : 0x75621d,
+            transparent: true,
+            opacity: 0.55,
+            side: THREE.DoubleSide
+        })
+    );
+
+    marker.rotation.x =
+        -Math.PI / 2;
+
+    marker.position.set(
+        x,
+        0.041,
+        z
+    );
+
+    scene.add(marker);
+
+    // --------------------------------------------------------
+    // PICKUP
+    // --------------------------------------------------------
+
+    const pickup =
+        new THREE.Group();
+
+    pickup.position.set(
+        x,
+        0.1,
+        z
+    );
+
+    const ring =
+        new THREE.Mesh(
+            new THREE.TorusGeometry(
+                big ? 1.35 : 0.8,
+                big ? 0.15 : 0.1,
+                10,
+                28
+            ),
+            big
+                ? pickupMaterialBig
+                : pickupMaterialSmall
+        );
+
+    ring.rotation.x =
+        Math.PI / 2;
+
+    ring.position.y =
+        big ? 0.45 : 0.28;
+
+    pickup.add(ring);
+
+    const orb =
+        new THREE.Mesh(
+            new THREE.OctahedronGeometry(
+                big ? 0.72 : 0.38
+            ),
+            big
+                ? pickupMaterialBig
+                : pickupMaterialSmall
+        );
+
+    orb.position.y =
+        big ? 1.15 : 0.7;
+
+    pickup.add(orb);
+
+    scene.add(pickup);
+
+    boostPads.push({
+
+        pickup,
+        orb,
+
+        x,
+        z,
+
+        big,
+
+        active: true,
+        timer: 0
+
+    });
+
+}
+
+// ============================================================
+// SPACED PAD LAYOUT
+// ============================================================
+
+// Small midfield
+createBoostPad(0, 0);
+createBoostPad(0, 25);
+createBoostPad(0, -25);
+
+// Blue half
+createBoostPad(-27, 13);
+createBoostPad(-27, -13);
+
+createBoostPad(-52, 0);
+
+createBoostPad(-56, 27);
+createBoostPad(-56, -27);
+
+// Orange half
+createBoostPad(27, 13);
+createBoostPad(27, -13);
+
+createBoostPad(52, 0);
+
+createBoostPad(56, 27);
+createBoostPad(56, -27);
+
+// Big pads
+createBoostPad(-65, 38, true);
+createBoostPad(-65, -38, true);
+
+createBoostPad(65, 38, true);
+createBoostPad(65, -38, true);
+
+createBoostPad(0, 39, true);
+createBoostPad(0, -39, true);
+
+// ============================================================
+// GAME STATE
+// ============================================================
+
+let blueScore = 0;
+let orangeScore = 0;
+
+let gameTime = 300;
+
+let ballCam = true;
+
+let goalPause = false;
+let goalPauseTimer = 0;
+let goalText = "";
+
+let lastTime =
+    performance.now();
+
+// ============================================================
+// HUD + MENU
+// ============================================================
+
+const hud =
+    document.getElementById("hud");
+
+hud.innerHTML = `
+
+    <h1>BOOSTBALL</h1>
+
+    <p id="score">
+        Blue 0 - 0 Orange
+    </p>
+
+    <p id="timer">
+        5:00
+    </p>
+
+    <p id="boost">
+        BOOST: 33
+    </p>
+
+    <p
+        id="cameraMode"
+        style="
+            font-size:13px;
+            opacity:0.8;
+        "
+    >
+        BALL CAM
+    </p>
+
+    <div
+        id="goalMessage"
+        style="
+            font-size:48px;
+            font-weight:bold;
+            margin-top:20px;
+            min-height:60px;
+        "
+    ></div>
+
+    <p
+        style="
+            font-size:12px;
+            opacity:0.55;
+        "
+    >
+        TAB — Menu
+    </p>
+
+`;
+
+const menu =
+    document.createElement("div");
+
+menu.id = "boostball-menu";
+
+menu.style.cssText = `
+
+    display:none;
+
+    position:absolute;
+
+    left:50%;
+    top:50%;
+
+    transform:translate(-50%, -50%);
+
+    width:min(520px, 85vw);
+
+    padding:28px 34px;
+
+    color:white;
+
+    background:
+        rgba(5, 12, 25, 0.94);
+
+    border:
+        1px solid rgba(255,255,255,0.25);
+
+    border-radius:18px;
+
+    box-shadow:
+        0 18px 60px rgba(0,0,0,0.5);
+
+    z-index:100;
+
+    font-family:Arial,sans-serif;
+
+`;
+
+document.body.appendChild(menu);
+
+function readableKey(key) {
+
+    if (key === " ")
+        return "SPACE";
+
+    if (key === "control")
+        return "LEFT CTRL";
+
+    if (key === "shift")
+        return "SHIFT";
+
+    if (key === "tab")
+        return "TAB";
+
+    return key.toUpperCase();
+
+}
+
+function updateMenu() {
+
+    menu.style.display =
+        menuOpen
+            ? "block"
+            : "none";
+
+    if (!menuOpen)
+        return;
+
+    menu.innerHTML = `
+
+        <div style="
+            font-size:30px;
+            font-weight:bold;
+            margin-bottom:5px;
+        ">
+            BOOSTBALL
+        </div>
+
+        <div style="
+            opacity:0.6;
+            margin-bottom:24px;
+        ">
+            CONTROLS
+        </div>
+
+        ${menuRow(
+            "Drive Forward",
+            readableKey(controls.throttle)
+        )}
+
+        ${menuRow(
+            "Reverse / Brake",
+            readableKey(controls.reverse)
+        )}
+
+        ${menuRow(
+            "Steer Left",
+            readableKey(controls.left)
+        )}
+
+        ${menuRow(
+            "Steer Right",
+            readableKey(controls.right)
+        )}
+
+        ${menuRow(
+            "Jump",
+            readableKey(controls.jump)
+        )}
+
+        ${menuRow(
+            "Boost",
+            readableKey(controls.boost)
+        )}
+
+        ${menuRow(
+            "Powerslide",
+            readableKey(controls.powerslide)
+        )}
+
+        ${menuRow(
+            "Ball Cam",
+            readableKey(controls.ballCam)
+        )}
+
+        ${menuRow(
+            "Reset",
+            readableKey(controls.reset)
+        )}
+
+        <div style="
+            margin-top:25px;
+            padding-top:18px;
+            border-top:
+                1px solid rgba(255,255,255,0.15);
+
+            text-align:center;
+            opacity:0.6;
+            font-size:13px;
+        ">
+            Press TAB to return to the match
+        </div>
+
+    `;
+
+}
+
+function menuRow(name, key) {
+
+    return `
+
+        <div style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+
+            padding:9px 0;
+
+            border-bottom:
+                1px solid rgba(255,255,255,0.07);
+        ">
+
+            <span>
+                ${name}
+            </span>
+
+            <strong>
+                ${key}
+            </strong>
+
+        </div>
+
+    `;
+
+}
+
+// ============================================================
 // JUMP
 // ============================================================
 
 function jump() {
 
-    if (!grounded) {
+    if (!grounded)
         return;
-    }
-
-    verticalVelocity = 11;
 
     grounded = false;
+
+    verticalVelocity = 11;
 
 }
 
 // ============================================================
-// KICKOFF RESET
+// RESET
 // ============================================================
 
 function resetKickoff() {
 
     car.position.set(
-        -28,
+        -35,
         0,
         0
     );
@@ -856,7 +1185,7 @@ function resetKickoff() {
 
     car.rotation.set(
         0,
-        carRotation,
+        0,
         0
     );
 
@@ -867,6 +1196,7 @@ function resetKickoff() {
     );
 
     verticalVelocity = 0;
+
     grounded = true;
 
     ball.position.set(
@@ -890,7 +1220,7 @@ function resetKickoff() {
 }
 
 // ============================================================
-// CAR UPDATE
+// CAR PHYSICS
 // ============================================================
 
 function updateCar(dt) {
@@ -902,73 +1232,173 @@ function updateCar(dt) {
             -Math.sin(carRotation)
         );
 
+    const right =
+        new THREE.Vector3(
+            Math.sin(carRotation),
+            0,
+            Math.cos(carRotation)
+        );
+
     let forwardSpeed =
         carVelocity.dot(forward);
 
-    // --------------------------------------------------------
-    // ACCELERATION
-    // --------------------------------------------------------
+    const planarSpeed =
+        Math.hypot(
+            carVelocity.x,
+            carVelocity.z
+        );
 
-    if (
-        keys["w"] ||
-        keys["arrowup"]
-    ) {
+    const throttle =
+        keys[controls.throttle];
+
+    const reverse =
+        keys[controls.reverse];
+
+    const boosting =
+        keys[controls.boost] &&
+        boostAmount > 0;
+
+    const powersliding =
+        keys[controls.powerslide] &&
+        grounded;
+
+    // ========================================================
+    // GROUND ENGINE
+    // ========================================================
+
+    if (grounded) {
+
+        // Forward throttle
+        if (throttle) {
+
+            // Engine stops adding normal power once the car
+            // reaches normal top speed.
+            //
+            // IMPORTANT:
+            // We DO NOT clamp existing velocity.
+
+            if (
+                forwardSpeed <
+                DRIVE_TOP_SPEED
+            ) {
+
+                carVelocity.addScaledVector(
+                    forward,
+                    ACCELERATION * dt
+                );
+
+            }
+
+        }
+
+        // Brake / reverse
+        if (reverse) {
+
+            if (forwardSpeed > 1.5) {
+
+                carVelocity.addScaledVector(
+                    forward,
+                    -BRAKING * dt
+                );
+
+            }
+
+            else if (
+                forwardSpeed >
+                -REVERSE_TOP_SPEED
+            ) {
+
+                carVelocity.addScaledVector(
+                    forward,
+                    -REVERSE_ACCELERATION * dt
+                );
+
+            }
+
+        }
+
+        // ====================================================
+        // TYRE GRIP
+        // ====================================================
+
+        const sidewaysSpeed =
+            carVelocity.dot(right);
+
+        const grip =
+            powersliding
+                ? POWERSLIDE_GRIP
+                : NORMAL_GRIP;
+
+        const gripAmount =
+            1 -
+            Math.exp(
+                -grip * dt
+            );
 
         carVelocity.addScaledVector(
-            forward,
-            acceleration * dt
+            right,
+            -sidewaysSpeed *
+            gripAmount
         );
+
+        // ====================================================
+        // GROUND DRAG
+        // ====================================================
+
+        const coasting =
+            !throttle &&
+            !reverse &&
+            !boosting;
+
+        const drag =
+            coasting
+                ? COAST_DRAG
+                : POWERED_DRAG;
+
+        const dragFactor =
+            Math.exp(
+                -drag * dt
+            );
+
+        carVelocity.x *= dragFactor;
+        carVelocity.z *= dragFactor;
 
     }
 
-    // --------------------------------------------------------
-    // BRAKE / REVERSE
-    // --------------------------------------------------------
+    // ========================================================
+    // BOOST
+    // ========================================================
 
-    if (
-        keys["s"] ||
-        keys["arrowdown"]
-    ) {
+    // Boost is genuine thrust.
+    //
+    // This intentionally works in the air.
+    //
+    // Normal W/S DOES NOT.
 
-        if (forwardSpeed > 2) {
+    if (boosting) {
 
-            carVelocity.addScaledVector(
-                forward,
-                -brakingPower * dt
+        const currentSpeed =
+            Math.hypot(
+                carVelocity.x,
+                carVelocity.z
             );
 
-        } else {
+        if (
+            currentSpeed <
+            BOOST_TOP_SPEED
+        ) {
 
             carVelocity.addScaledVector(
                 forward,
-                -reverseAcceleration * dt
+                BOOST_ACCELERATION *
+                dt
             );
 
         }
 
-    }
-
-    // --------------------------------------------------------
-    // BOOST
-    // --------------------------------------------------------
-
-    const boosting =
-        keys["shift"] &&
-        boostAmount > 0 &&
-        (
-            keys["w"] ||
-            keys["arrowup"]
-        );
-
-    if (boosting) {
-
-        carVelocity.addScaledVector(
-            forward,
-            boostAcceleration * dt
-        );
-
         boostAmount -=
-            33 * dt;
+            BOOST_USAGE *
+            dt;
 
         boostAmount =
             Math.max(
@@ -978,161 +1408,95 @@ function updateCar(dt) {
 
     }
 
-    // --------------------------------------------------------
-    // SPEED LIMIT
-    // --------------------------------------------------------
-
-    let planarSpeed =
-        Math.sqrt(
-            carVelocity.x ** 2 +
-            carVelocity.z ** 2
-        );
-
-    const speedLimit =
-        boosting
-            ? boostMaxSpeed
-            : maxSpeed;
-
-    if (planarSpeed > speedLimit) {
-
-        const ratio =
-            speedLimit /
-            planarSpeed;
-
-        carVelocity.x *= ratio;
-        carVelocity.z *= ratio;
-
-        planarSpeed =
-            speedLimit;
-
-    }
-
-    // --------------------------------------------------------
+    // ========================================================
     // STEERING
-    // --------------------------------------------------------
+    // ========================================================
 
     let steering = 0;
 
-    if (
-        keys["a"] ||
-        keys["arrowleft"]
-    ) {
-
+    if (keys[controls.left])
         steering += 1;
 
-    }
-
-    if (
-        keys["d"] ||
-        keys["arrowright"]
-    ) {
-
+    if (keys[controls.right])
         steering -= 1;
 
+    if (grounded) {
+
+        const speed =
+            Math.hypot(
+                carVelocity.x,
+                carVelocity.z
+            );
+
+        if (speed > 0.3) {
+
+            const speedFactor =
+                THREE.MathUtils.clamp(
+                    speed /
+                    DRIVE_TOP_SPEED,
+                    0,
+                    1
+                );
+
+            let steeringRate =
+                THREE.MathUtils.lerp(
+                    LOW_SPEED_STEER,
+                    HIGH_SPEED_STEER,
+                    speedFactor
+                );
+
+            if (powersliding) {
+
+                steeringRate *=
+                    POWERSLIDE_STEER_MULTIPLIER;
+
+            }
+
+            const direction =
+                forwardSpeed >= 0
+                    ? 1
+                    : -1;
+
+            carRotation +=
+                steering *
+                steeringRate *
+                direction *
+                dt;
+
+        }
+
     }
 
-    forwardSpeed =
-        carVelocity.dot(forward);
+    // ========================================================
+    // AIR PHYSICS
+    // ========================================================
 
-    if (
-        Math.abs(forwardSpeed) >
-        0.35
-    ) {
+    else {
 
-        const speedFactor =
-            THREE.MathUtils.clamp(
-                Math.abs(forwardSpeed) /
-                maxSpeed,
-                0,
-                1
-            );
+        // NO W/S horizontal acceleration here.
+        //
+        // Your X/Z momentum is preserved.
+        //
+        // If you jumped going forward, you continue forward
+        // even if you press reverse in mid-air.
 
-        const steeringRate =
-            THREE.MathUtils.lerp(
-                2.45,
-                1.55,
-                speedFactor
-            );
-
-        const reverseDirection =
-            forwardSpeed >= 0
-                ? 1
-                : -1;
-
-        carRotation +=
-            steering *
-            steeringRate *
-            reverseDirection *
+        verticalVelocity -=
+            GRAVITY *
             dt;
 
     }
 
-    // --------------------------------------------------------
-    // GROUND GRIP
-    // --------------------------------------------------------
-
-    if (grounded) {
-
-        const right =
-            new THREE.Vector3(
-                Math.sin(carRotation),
-                0,
-                Math.cos(carRotation)
-            );
-
-        const sidewaysSpeed =
-            carVelocity.dot(right);
-
-        carVelocity.addScaledVector(
-            right,
-            -sidewaysSpeed *
-            Math.min(
-                1,
-                8 * dt
-            )
-        );
-
-    }
-
-    // --------------------------------------------------------
-    // FRICTION
-    // --------------------------------------------------------
-
-    const noThrottle =
-        !keys["w"] &&
-        !keys["s"] &&
-        !keys["arrowup"] &&
-        !keys["arrowdown"];
-
-    if (noThrottle) {
-
-        const resistance =
-            Math.pow(
-                rollingResistance,
-                dt * 60
-            );
-
-        carVelocity.x *= resistance;
-        carVelocity.z *= resistance;
-
-    }
-
-    // --------------------------------------------------------
-    // GRAVITY
-    // --------------------------------------------------------
-
-    if (!grounded) {
-
-        verticalVelocity -=
-            27 * dt;
-
-    }
+    // ========================================================
+    // VERTICAL MOVEMENT
+    // ========================================================
 
     car.position.y +=
         verticalVelocity *
         dt;
 
-    if (car.position.y <= 0) {
+    if (
+        car.position.y <= 0
+    ) {
 
         car.position.y = 0;
 
@@ -1142,9 +1506,9 @@ function updateCar(dt) {
 
     }
 
-    // --------------------------------------------------------
-    // MOVE
-    // --------------------------------------------------------
+    // ========================================================
+    // HORIZONTAL MOVEMENT
+    // ========================================================
 
     car.position.x +=
         carVelocity.x *
@@ -1157,26 +1521,24 @@ function updateCar(dt) {
     car.rotation.y =
         carRotation;
 
-    // --------------------------------------------------------
-    // ARENA COLLISION
-    // --------------------------------------------------------
-
     collideCarWithArena();
 
-    // --------------------------------------------------------
-    // WHEEL ROTATION
-    // --------------------------------------------------------
+    // ========================================================
+    // WHEELS
+    // ========================================================
 
-    const wheelSpin =
+    forwardSpeed =
+        carVelocity.dot(forward);
+
+    const spin =
         forwardSpeed *
         dt /
         0.55;
 
     for (const wheel of wheels) {
 
-        // Only rotate the tyre around its axle.
-        wheel.mesh.rotation.y +=
-            wheelSpin;
+        wheel.rotation.z -=
+            spin;
 
     }
 
@@ -1188,185 +1550,193 @@ function updateCar(dt) {
 
 function collideCarWithArena() {
 
-    const CAR_RADIUS = 2.1;
+    const RADIUS = 2.1;
 
     // Side walls
 
     if (
         car.position.z >
-        HALF_WIDTH -
-        CAR_RADIUS
+        HALF_WIDTH - RADIUS
     ) {
 
         car.position.z =
-            HALF_WIDTH -
-            CAR_RADIUS;
+            HALF_WIDTH - RADIUS;
 
         carVelocity.z =
-            -Math.abs(
-                carVelocity.z
-            ) *
-            0.25;
+            -Math.abs(carVelocity.z) *
+            0.28;
 
     }
 
     if (
         car.position.z <
-        -HALF_WIDTH +
-        CAR_RADIUS
+        -HALF_WIDTH + RADIUS
     ) {
 
         car.position.z =
-            -HALF_WIDTH +
-            CAR_RADIUS;
+            -HALF_WIDTH + RADIUS;
 
         carVelocity.z =
-            Math.abs(
-                carVelocity.z
-            ) *
-            0.25;
+            Math.abs(carVelocity.z) *
+            0.28;
 
     }
 
-    const insideGoalWidth =
-        Math.abs(
-            car.position.z
-        ) <
+    const insideGoal =
+        Math.abs(car.position.z) <
         GOAL_WIDTH / 2 -
-        CAR_RADIUS / 2;
+        RADIUS / 2;
 
-    // --------------------------------------------------------
-    // NORMAL END WALL COLLISION
-    // --------------------------------------------------------
+    // Normal end wall
 
-    if (!insideGoalWidth) {
+    if (!insideGoal) {
 
         if (
             car.position.x >
-            HALF_LENGTH -
-            CAR_RADIUS
+            HALF_LENGTH - RADIUS
         ) {
 
             car.position.x =
-                HALF_LENGTH -
-                CAR_RADIUS;
+                HALF_LENGTH - RADIUS;
 
             carVelocity.x =
-                -Math.abs(
-                    carVelocity.x
-                ) *
-                0.25;
+                -Math.abs(carVelocity.x) *
+                0.28;
 
         }
 
         if (
             car.position.x <
-            -HALF_LENGTH +
-            CAR_RADIUS
+            -HALF_LENGTH + RADIUS
         ) {
 
             car.position.x =
-                -HALF_LENGTH +
-                CAR_RADIUS;
+                -HALF_LENGTH + RADIUS;
 
             carVelocity.x =
-                Math.abs(
-                    carVelocity.x
-                ) *
-                0.25;
+                Math.abs(carVelocity.x) *
+                0.28;
 
         }
 
     }
 
-    // --------------------------------------------------------
-    // INSIDE ORANGE GOAL
-    // --------------------------------------------------------
+    // Orange goal interior
 
     if (
+        insideGoal &&
         car.position.x >
-        HALF_LENGTH -
-        CAR_RADIUS &&
-        insideGoalWidth
+        HALF_LENGTH - RADIUS
     ) {
 
-        // Goal side walls
-
-        const goalSideLimit =
+        const sideLimit =
             GOAL_WIDTH / 2 -
-            CAR_RADIUS / 2;
+            RADIUS / 2;
 
-        car.position.z =
-            THREE.MathUtils.clamp(
-                car.position.z,
-                -goalSideLimit,
-                goalSideLimit
-            );
+        if (
+            car.position.z >
+            sideLimit
+        ) {
 
-        // GOAL BACK WALL
-        const maxGoalX =
+            car.position.z =
+                sideLimit;
+
+            carVelocity.z =
+                -Math.abs(carVelocity.z) *
+                0.25;
+
+        }
+
+        if (
+            car.position.z <
+            -sideLimit
+        ) {
+
+            car.position.z =
+                -sideLimit;
+
+            carVelocity.z =
+                Math.abs(carVelocity.z) *
+                0.25;
+
+        }
+
+        const back =
             HALF_LENGTH +
             GOAL_DEPTH -
-            CAR_RADIUS;
+            RADIUS;
 
         if (
             car.position.x >
-            maxGoalX
+            back
         ) {
 
             car.position.x =
-                maxGoalX;
+                back;
 
             carVelocity.x =
-                -Math.abs(
-                    carVelocity.x
-                ) *
+                -Math.abs(carVelocity.x) *
                 0.25;
 
         }
 
     }
 
-    // --------------------------------------------------------
-    // INSIDE BLUE GOAL
-    // --------------------------------------------------------
+    // Blue goal interior
 
     if (
+        insideGoal &&
         car.position.x <
-        -HALF_LENGTH +
-        CAR_RADIUS &&
-        insideGoalWidth
+        -HALF_LENGTH + RADIUS
     ) {
 
-        const goalSideLimit =
+        const sideLimit =
             GOAL_WIDTH / 2 -
-            CAR_RADIUS / 2;
+            RADIUS / 2;
 
-        car.position.z =
-            THREE.MathUtils.clamp(
-                car.position.z,
-                -goalSideLimit,
-                goalSideLimit
-            );
+        if (
+            car.position.z >
+            sideLimit
+        ) {
 
-        // GOAL BACK WALL
-        const minGoalX =
+            car.position.z =
+                sideLimit;
+
+            carVelocity.z =
+                -Math.abs(carVelocity.z) *
+                0.25;
+
+        }
+
+        if (
+            car.position.z <
+            -sideLimit
+        ) {
+
+            car.position.z =
+                -sideLimit;
+
+            carVelocity.z =
+                Math.abs(carVelocity.z) *
+                0.25;
+
+        }
+
+        const back =
             -HALF_LENGTH -
             GOAL_DEPTH +
-            CAR_RADIUS;
+            RADIUS;
 
         if (
             car.position.x <
-            minGoalX
+            back
         ) {
 
             car.position.x =
-                minGoalX;
+                back;
 
             carVelocity.x =
-                Math.abs(
-                    carVelocity.x
-                ) *
+                Math.abs(carVelocity.x) *
                 0.25;
 
         }
@@ -1381,8 +1751,6 @@ function collideCarWithArena() {
 
 function updateBall(dt) {
 
-    // Gravity
-
     ballVelocity.y -=
         21 * dt;
 
@@ -1391,9 +1759,9 @@ function updateBall(dt) {
         dt
     );
 
-    // --------------------------------------------------------
+    // ========================================================
     // FLOOR
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         ball.position.y <
@@ -1403,37 +1771,40 @@ function updateBall(dt) {
         ball.position.y =
             BALL_RADIUS;
 
+        // Kill tiny annoying bounces.
+
         if (
-            ballVelocity.y <
-            -0.5
+            Math.abs(ballVelocity.y) <
+            2.4
         ) {
-
-            ballVelocity.y *=
-                -0.70;
-
-        } else {
 
             ballVelocity.y = 0;
 
+        } else {
+
+            ballVelocity.y *=
+                -0.52;
+
         }
 
-        const groundDrag =
-            Math.pow(
-                0.996,
-                dt * 60
+        // Rolling friction
+
+        const groundFriction =
+            Math.exp(
+                -0.22 * dt
             );
 
         ballVelocity.x *=
-            groundDrag;
+            groundFriction;
 
         ballVelocity.z *=
-            groundDrag;
+            groundFriction;
 
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // SIDE WALLS
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         ball.position.z >
@@ -1449,7 +1820,7 @@ function updateBall(dt) {
             -Math.abs(
                 ballVelocity.z
             ) *
-            0.82;
+            0.68;
 
     }
 
@@ -1467,48 +1838,42 @@ function updateBall(dt) {
             Math.abs(
                 ballVelocity.z
             ) *
-            0.82;
+            0.68;
 
     }
 
     collideBallWithEnds();
 
-    // --------------------------------------------------------
-    // BALL ROTATION
-    // --------------------------------------------------------
-
     ball.rotation.z -=
         ballVelocity.x *
         dt *
-        0.45;
+        0.4;
 
     ball.rotation.x +=
         ballVelocity.z *
         dt *
-        0.45;
+        0.4;
 
 }
 
 // ============================================================
-// BALL END WALL / GOAL COLLISION
+// BALL END COLLISION
 // ============================================================
 
 function collideBallWithEnds() {
 
-    const insideGoalWidth =
-        Math.abs(
-            ball.position.z
-        ) <
+    const insideGoal =
+        Math.abs(ball.position.z) <
         GOAL_WIDTH / 2 -
-        BALL_RADIUS * 0.4;
+        BALL_RADIUS * 0.3;
 
-    const belowCrossbar =
+    const belowGoal =
         ball.position.y <
         GOAL_HEIGHT -
         BALL_RADIUS * 0.2;
 
     // ========================================================
-    // ORANGE END
+    // ORANGE SIDE
     // ========================================================
 
     if (
@@ -1518,79 +1883,74 @@ function collideBallWithEnds() {
     ) {
 
         if (
-            insideGoalWidth &&
-            belowCrossbar
+            insideGoal &&
+            belowGoal
         ) {
 
-            // GOAL DETECTION
             if (
                 ball.position.x >
                 HALF_LENGTH +
-                BALL_RADIUS * 0.3
+                BALL_RADIUS * 0.35
             ) {
 
                 scoreGoal("blue");
 
             }
 
-            // Back of orange goal
-
-            const backWall =
+            const back =
                 HALF_LENGTH +
                 GOAL_DEPTH -
                 BALL_RADIUS;
 
             if (
                 ball.position.x >
-                backWall
+                back
             ) {
 
                 ball.position.x =
-                    backWall;
+                    back;
 
                 ballVelocity.x =
                     -Math.abs(
                         ballVelocity.x
                     ) *
-                    0.65;
+                    0.5;
 
             }
 
-            // Goal side walls
-
-            const sideLimit =
+            const side =
                 GOAL_WIDTH / 2 -
                 BALL_RADIUS;
 
             if (
                 ball.position.z >
-                sideLimit
+                side
             ) {
 
                 ball.position.z =
-                    sideLimit;
+                    side;
 
                 ballVelocity.z =
                     -Math.abs(
                         ballVelocity.z
                     ) *
-                    0.65;
+                    0.5;
 
             }
 
             if (
                 ball.position.z <
-                -sideLimit
+                -side
             ) {
 
                 ball.position.z =
-                    -sideLimit;
+                    -side;
 
                 ballVelocity.z =
                     Math.abs(
                         ballVelocity.z
                     ) *
-                    0.65;
+                    0.5;
 
             }
 
@@ -1604,14 +1964,14 @@ function collideBallWithEnds() {
                 -Math.abs(
                     ballVelocity.x
                 ) *
-                0.82;
+                0.68;
 
         }
 
     }
 
     // ========================================================
-    // BLUE END
+    // BLUE SIDE
     // ========================================================
 
     if (
@@ -1621,76 +1981,74 @@ function collideBallWithEnds() {
     ) {
 
         if (
-            insideGoalWidth &&
-            belowCrossbar
+            insideGoal &&
+            belowGoal
         ) {
 
             if (
                 ball.position.x <
                 -HALF_LENGTH -
-                BALL_RADIUS * 0.3
+                BALL_RADIUS * 0.35
             ) {
 
-                scoreGoal(
-                    "orange"
-                );
+                scoreGoal("orange");
 
             }
 
-            const backWall =
+            const back =
                 -HALF_LENGTH -
                 GOAL_DEPTH +
                 BALL_RADIUS;
 
             if (
                 ball.position.x <
-                backWall
+                back
             ) {
 
                 ball.position.x =
-                    backWall;
+                    back;
 
                 ballVelocity.x =
                     Math.abs(
                         ballVelocity.x
                     ) *
-                    0.65;
+                    0.5;
 
             }
 
-            const sideLimit =
+            const side =
                 GOAL_WIDTH / 2 -
                 BALL_RADIUS;
 
             if (
                 ball.position.z >
-                sideLimit
+                side
             ) {
 
                 ball.position.z =
-                    sideLimit;
+                    side;
 
                 ballVelocity.z =
                     -Math.abs(
                         ballVelocity.z
                     ) *
-                    0.65;
+                    0.5;
 
             }
 
             if (
                 ball.position.z <
-                -sideLimit
+                -side
             ) {
 
                 ball.position.z =
-                    -sideLimit;
+                    -side;
 
                 ballVelocity.z =
                     Math.abs(
                         ballVelocity.z
                     ) *
-                    0.65;
+                    0.5;
 
             }
 
@@ -1704,7 +2062,7 @@ function collideBallWithEnds() {
                 Math.abs(
                     ballVelocity.x
                 ) *
-                0.82;
+                0.68;
 
         }
 
@@ -1724,20 +2082,18 @@ function updateCarBallCollision() {
             .add(
                 new THREE.Vector3(
                     0,
-                    1.15,
+                    1.1,
                     0
                 )
             );
 
-    const difference =
+    const delta =
         ball.position
             .clone()
-            .sub(
-                carCentre
-            );
+            .sub(carCentre);
 
     const distance =
-        difference.length();
+        delta.length();
 
     const collisionDistance =
         BALL_RADIUS +
@@ -1751,7 +2107,7 @@ function updateCarBallCollision() {
     ) {
 
         const normal =
-            difference.normalize();
+            delta.normalize();
 
         ball.position.copy(
             carCentre
@@ -1762,39 +2118,42 @@ function updateCarBallCollision() {
                 )
         );
 
-        const carSpeed =
-            carVelocity.length();
+        // Relative movement into ball
 
-        const impactStrength =
-            9 +
-            carSpeed *
-            1.12;
+        const speedIntoBall =
+            Math.max(
+                0,
+                carVelocity.dot(normal)
+            );
+
+        const impulse =
+            7.5 +
+            speedIntoBall *
+            1.05;
 
         ballVelocity.addScaledVector(
             normal,
-            impactStrength
+            impulse
         );
 
         ballVelocity.addScaledVector(
             carVelocity,
-            0.48
+            0.32
         );
-
-        // Jump hits give vertical power
 
         if (!grounded) {
 
             ballVelocity.y +=
                 Math.max(
-                    2,
+                    1.5,
                     verticalVelocity *
-                    0.75
+                    0.55
                 );
 
         }
 
         carVelocity.multiplyScalar(
-            0.94
+            0.96
         );
 
     }
@@ -1809,21 +2168,16 @@ function updateBoostPads(dt) {
 
     for (const pad of boostPads) {
 
-        // ----------------------------------------------------
-        // RESPAWN TIMER
-        // ----------------------------------------------------
-
         if (!pad.active) {
 
-            pad.respawnTimer -= dt;
+            pad.timer -= dt;
 
             if (
-                pad.respawnTimer <= 0
+                pad.timer <= 0
             ) {
 
                 pad.active = true;
-
-                pad.group.visible = true;
+                pad.pickup.visible = true;
 
             }
 
@@ -1831,54 +2185,30 @@ function updateBoostPads(dt) {
 
         }
 
-        // ----------------------------------------------------
-        // ANIMATION
-        // ----------------------------------------------------
+        pad.orb.rotation.x +=
+            dt * 1.4;
 
         pad.orb.rotation.y +=
-            dt * 2.5;
-
-        pad.orb.rotation.x +=
-            dt * 1.3;
-
-        pad.orb.position.y =
-            (
-                pad.big
-                    ? 1.15
-                    : 0.72
-            ) +
-            Math.sin(
-                performance.now() *
-                0.004
-            ) *
-            0.12;
-
-        // ----------------------------------------------------
-        // PICKUP
-        // ----------------------------------------------------
+            dt * 2.6;
 
         const dx =
             car.position.x -
-            pad.group.position.x;
+            pad.x;
 
         const dz =
             car.position.z -
-            pad.group.position.z;
+            pad.z;
 
         const distance =
-            Math.sqrt(
-                dx * dx +
-                dz * dz
-            );
-
-        const pickupRadius =
-            pad.big
-                ? 2.6
-                : 2;
+            Math.hypot(dx, dz);
 
         if (
             distance <
-            pickupRadius &&
+            (
+                pad.big
+                    ? 2.8
+                    : 2
+            ) &&
             car.position.y <
             2.5
         ) {
@@ -1887,7 +2217,7 @@ function updateBoostPads(dt) {
 
                 boostAmount = 100;
 
-                pad.respawnTimer = 10;
+                pad.timer = 10;
 
             } else {
 
@@ -1897,13 +2227,15 @@ function updateBoostPads(dt) {
                         boostAmount + 12
                     );
 
-                pad.respawnTimer = 4;
+                pad.timer = 4;
 
             }
 
             pad.active = false;
 
-            pad.group.visible = false;
+            // Decal stays.
+            // Pickup disappears.
+            pad.pickup.visible = false;
 
         }
 
@@ -1912,18 +2244,16 @@ function updateBoostPads(dt) {
 }
 
 // ============================================================
-// GOAL
+// GOALS
 // ============================================================
 
 function scoreGoal(team) {
 
-    if (goalPause) {
+    if (goalPause)
         return;
-    }
 
     goalPause = true;
-
-    goalPauseTimer = 2.0;
+    goalPauseTimer = 2;
 
     if (team === "blue") {
 
@@ -1941,36 +2271,13 @@ function scoreGoal(team) {
 
     }
 
-    // Stop the car during goal pause
-
-    carVelocity.set(
-        0,
-        0,
-        0
-    );
+    carVelocity.set(0, 0, 0);
 
 }
 
-// ============================================================
-// GOAL PAUSE
-// ============================================================
-
 function updateGoalPause(dt) {
 
-    if (!goalPause) {
-        return;
-    }
-
     goalPauseTimer -= dt;
-
-    // Let the ball continue slowly during celebration
-
-    ballVelocity.multiplyScalar(
-        Math.pow(
-            0.97,
-            dt * 60
-        )
-    );
 
     if (
         goalPauseTimer <= 0
@@ -1991,15 +2298,15 @@ const cameraTarget =
 
 function updateCamera(dt) {
 
-    const carForward =
+    const forward =
         new THREE.Vector3(
             Math.cos(carRotation),
             0,
             -Math.sin(carRotation)
         );
 
-    let desiredCameraPosition;
-    let desiredLookTarget;
+    let desiredPosition;
+    let desiredTarget;
 
     // ========================================================
     // BALL CAM
@@ -2007,14 +2314,13 @@ function updateCamera(dt) {
 
     if (ballCam) {
 
-        // Horizontal direction FROM car TO ball
-
         const toBall =
             ball.position
                 .clone()
-                .sub(
-                    car.position
-                );
+                .sub(car.position);
+
+        const ballDistance =
+            toBall.length();
 
         toBall.y = 0;
 
@@ -2023,9 +2329,7 @@ function updateCamera(dt) {
             0.01
         ) {
 
-            toBall.copy(
-                carForward
-            );
+            toBall.copy(forward);
 
         } else {
 
@@ -2033,28 +2337,46 @@ function updateCamera(dt) {
 
         }
 
-        // Camera stays BEHIND THE CAR relative to the ball.
-        // Car remains the visual anchor.
+        // Slightly adaptive distance,
+        // but don't zoom into another postcode.
 
-        desiredCameraPosition =
+        const cameraDistance =
+            THREE.MathUtils.clamp(
+                11.5 +
+                ballDistance * 0.018,
+                11.5,
+                14
+            );
+
+        desiredPosition =
             car.position
                 .clone()
                 .addScaledVector(
                     toBall,
-                    -12.5
+                    -cameraDistance
                 );
 
-        desiredCameraPosition.y +=
-            6.5;
+        desiredPosition.y +=
+            6.4;
 
-        // Look mostly at ball, but slightly above car line.
+        desiredTarget =
+            ball.position.clone();
 
-        desiredLookTarget =
-            ball.position
-                .clone();
+        // Blend some car position into target.
+        // This helps keep the car visually anchored.
 
-        desiredLookTarget.y +=
-            0.35;
+        desiredTarget.lerp(
+            car.position
+                .clone()
+                .add(
+                    new THREE.Vector3(
+                        0,
+                        1.2,
+                        0
+                    )
+                ),
+            0.13
+        );
 
     }
 
@@ -2064,65 +2386,49 @@ function updateCamera(dt) {
 
     else {
 
-        desiredCameraPosition =
+        desiredPosition =
             car.position
                 .clone()
                 .addScaledVector(
-                    carForward,
-                    -12
+                    forward,
+                    -13
                 );
 
-        desiredCameraPosition.y +=
-            6;
+        desiredPosition.y +=
+            6.8;
 
-        desiredLookTarget =
+        desiredTarget =
             car.position
                 .clone()
                 .addScaledVector(
-                    carForward,
-                    10
+                    forward,
+                    11
                 );
 
-        desiredLookTarget.y +=
-            1.4;
+        desiredTarget.y +=
+            1.5;
 
     }
 
-    // --------------------------------------------------------
-    // Camera follows jumping car gently
-    // --------------------------------------------------------
-
-    desiredCameraPosition.y +=
-        Math.max(
-            0,
-            car.position.y * 0.3
-        );
-
-    // --------------------------------------------------------
-    // Smooth movement
-    // --------------------------------------------------------
-
-    const positionSmooth =
+    const cameraSmooth =
         1 -
-        Math.pow(
-            0.0008,
-            dt
+        Math.exp(
+            -7.5 * dt
         );
-
-    camera.position.lerp(
-        desiredCameraPosition,
-        positionSmooth
-    );
 
     const targetSmooth =
         1 -
-        Math.pow(
-            0.0001,
-            dt
+        Math.exp(
+            -11 * dt
         );
 
+    camera.position.lerp(
+        desiredPosition,
+        cameraSmooth
+    );
+
     cameraTarget.lerp(
-        desiredLookTarget,
+        desiredTarget,
         targetSmooth
     );
 
@@ -2133,48 +2439,31 @@ function updateCamera(dt) {
 }
 
 // ============================================================
-// HUD UPDATE
+// HUD
 // ============================================================
 
 function updateHUD() {
 
-    const score =
-        document.getElementById(
-            "score"
-        );
-
-    const timer =
-        document.getElementById(
-            "timer"
-        );
-
-    const boost =
-        document.getElementById(
-            "boost"
-        );
-
-    const cameraMode =
-        document.getElementById(
-            "cameraMode"
-        );
-
-    const goalMessage =
-        document.getElementById(
-            "goalMessage"
-        );
-
-    score.textContent =
+    document.getElementById(
+        "score"
+    ).textContent =
         `Blue ${blueScore} - ${orangeScore} Orange`;
 
-    boost.textContent =
+    document.getElementById(
+        "boost"
+    ).textContent =
         `BOOST: ${Math.ceil(boostAmount)}`;
 
-    cameraMode.textContent =
+    document.getElementById(
+        "cameraMode"
+    ).textContent =
         ballCam
             ? "BALL CAM"
             : "CAR CAM";
 
-    goalMessage.textContent =
+    document.getElementById(
+        "goalMessage"
+    ).textContent =
         goalPause
             ? goalText
             : "";
@@ -2189,35 +2478,32 @@ function updateHUD() {
             gameTime % 60
         )
         .toString()
-        .padStart(
-            2,
-            "0"
-        );
+        .padStart(2, "0");
 
-    timer.textContent =
+    document.getElementById(
+        "timer"
+    ).textContent =
         `${minutes}:${seconds}`;
 
 }
 
 // ============================================================
-// GAME TIMER
+// TIMER
 // ============================================================
 
 function updateTimer(dt) {
 
-    if (goalPause) {
-        return;
-    }
-
-    if (gameTime > 0) {
+    if (
+        gameTime > 0
+    ) {
 
         gameTime -= dt;
 
-        if (gameTime < 0) {
-
-            gameTime = 0;
-
-        }
+        gameTime =
+            Math.max(
+                0,
+                gameTime
+            );
 
     }
 
@@ -2249,7 +2535,7 @@ window.addEventListener(
 // MAIN LOOP
 // ============================================================
 
-function animate(currentTime) {
+function animate(time) {
 
     requestAnimationFrame(
         animate
@@ -2258,47 +2544,40 @@ function animate(currentTime) {
     const dt =
         Math.min(
             (
-                currentTime -
+                time -
                 lastTime
             ) /
             1000,
             0.033
         );
 
-    lastTime =
-        currentTime;
+    lastTime = time;
 
-    // --------------------------------------------------------
-    // NORMAL GAMEPLAY
-    // --------------------------------------------------------
+    // TAB genuinely pauses game simulation.
 
-    if (!goalPause) {
+    if (!menuOpen) {
 
-        updateCar(dt);
+        if (!goalPause) {
 
-        updateBall(dt);
+            updateCar(dt);
 
-        updateCarBallCollision();
+            updateBall(dt);
 
-        updateBoostPads(dt);
+            updateCarBallCollision();
 
-        updateTimer(dt);
+            updateBoostPads(dt);
 
-    }
+            updateTimer(dt);
 
-    // --------------------------------------------------------
-    // GOAL CELEBRATION
-    // --------------------------------------------------------
+        } else {
 
-    else {
+            updateGoalPause(dt);
 
-        updateGoalPause(dt);
+        }
 
-        updateBoostPads(dt);
+        updateCamera(dt);
 
     }
-
-    updateCamera(dt);
 
     updateHUD();
 
@@ -2310,7 +2589,7 @@ function animate(currentTime) {
 }
 
 // ============================================================
-// BEGIN
+// START
 // ============================================================
 
 resetKickoff();
