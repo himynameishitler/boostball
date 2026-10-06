@@ -1,21 +1,8 @@
 // ============================================================
-// BOOSTBALL v0.4.1 — MINI BEAST
-// Performance + Quality Update
+// BOOSTBALL v0.4.2 — CONTROL FREAK
 // ============================================================
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-
-// ============================================================
-// PERFORMANCE / QUALITY
-// ============================================================
-
-const QUALITY = {
-    fpsLimit: 60,
-    pixelRatio: 1,
-    shadows: true,
-    shadowMapSize: 1024,
-    showFPS: true
-};
 
 // ============================================================
 // BASIC SETUP
@@ -25,14 +12,13 @@ const canvas = document.getElementById("game");
 
 const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
-    powerPreference: "high-performance"
+    antialias: true
 });
 
 renderer.setPixelRatio(
     Math.min(
         window.devicePixelRatio,
-        QUALITY.pixelRatio
+        1
     )
 );
 
@@ -41,113 +27,105 @@ renderer.setSize(
     window.innerHeight
 );
 
-renderer.shadowMap.enabled =
-    QUALITY.shadows;
-
+renderer.shadowMap.enabled = true;
 renderer.shadowMap.type =
     THREE.PCFSoftShadowMap;
+
+// ============================================================
+// SCENE
+// ============================================================
 
 const scene = new THREE.Scene();
 
 scene.background =
-    new THREE.Color(0x07111f);
+    new THREE.Color(
+        0x07111f
+    );
 
 scene.fog =
     new THREE.Fog(
         0x07111f,
-        145,
-        235
+        140,
+        240
     );
+
+// ============================================================
+// CAMERA
+// ============================================================
 
 const camera =
     new THREE.PerspectiveCamera(
         72,
         window.innerWidth /
-            window.innerHeight,
+        window.innerHeight,
         0.1,
-        500
+        1000
     );
 
 camera.position.set(
-    -14,
+    -12,
     7,
     0
 );
 
 // ============================================================
-// REUSABLE SCRATCH VECTORS
-//
-// These exist once instead of creating thousands of temporary
-// Vector3 objects every minute.
-// ============================================================
-
-const tempForward =
-    new THREE.Vector3();
-
-const tempRight =
-    new THREE.Vector3();
-
-const tempA =
-    new THREE.Vector3();
-
-const tempB =
-    new THREE.Vector3();
-
-const tempC =
-    new THREE.Vector3();
-
-const tempD =
-    new THREE.Vector3();
-
-// ============================================================
 // LIGHTING
 // ============================================================
 
-const hemisphere =
+const hemisphereLight =
     new THREE.HemisphereLight(
-        0xd8f2ff,
-        0x16351d,
-        2.25
+        0x9fc8ff,
+        0x1a241c,
+        2.4
     );
 
-scene.add(hemisphere);
+scene.add(
+    hemisphereLight
+);
 
 const sun =
     new THREE.DirectionalLight(
         0xffffff,
-        2.8
+        3
     );
 
 sun.position.set(
-    -35,
-    60,
-    30
+    -40,
+    80,
+    35
 );
 
-sun.castShadow =
-    QUALITY.shadows;
+sun.castShadow = true;
 
 sun.shadow.mapSize.set(
-    QUALITY.shadowMapSize,
-    QUALITY.shadowMapSize
+    1024,
+    1024
 );
 
-// Tighter shadow volume than v0.4.
-// No reason to calculate shadows three suburbs away.
+sun.shadow.camera.left =
+    -95;
 
-sun.shadow.camera.left = -90;
-sun.shadow.camera.right = 90;
-sun.shadow.camera.top = 58;
-sun.shadow.camera.bottom = -58;
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 150;
+sun.shadow.camera.right =
+    95;
 
-sun.shadow.bias = -0.0003;
+sun.shadow.camera.top =
+    70;
 
-scene.add(sun);
+sun.shadow.camera.bottom =
+    -70;
+
+sun.shadow.camera.near =
+    1;
+
+sun.shadow.camera.far =
+    180;
+
+scene.add(
+    sun
+);
 
 // ============================================================
-// ARENA
+// ARENA CONSTANTS
 // ============================================================
 
 const FIELD_LENGTH = 154;
@@ -171,20 +149,17 @@ const BALL_RADIUS = 1.8;
 // FIELD
 // ============================================================
 
-const fieldMaterial =
-    new THREE.MeshStandardMaterial({
-        color: 0x21854c,
-        roughness: 0.84,
-        metalness: 0
-    });
-
 const field =
     new THREE.Mesh(
         new THREE.PlaneGeometry(
             FIELD_LENGTH,
             FIELD_WIDTH
         ),
-        fieldMaterial
+        new THREE.MeshStandardMaterial({
+            color: 0x15752c,
+            roughness: 0.95,
+            metalness: 0
+        })
     );
 
 field.rotation.x =
@@ -192,57 +167,9 @@ field.rotation.x =
 
 field.receiveShadow = true;
 
-scene.add(field);
-
-// ============================================================
-// SUBTLE FIELD STRIPES
-// ============================================================
-
-const stripeMaterial =
-    new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.022,
-        depthWrite: false
-    });
-
-const STRIPE_COUNT = 10;
-
-const stripeWidth =
-    FIELD_LENGTH /
-    STRIPE_COUNT;
-
-const stripeGeometry =
-    new THREE.PlaneGeometry(
-        stripeWidth,
-        FIELD_WIDTH
-    );
-
-for (
-    let i = 0;
-    i < STRIPE_COUNT;
-    i += 2
-) {
-
-    const stripe =
-        new THREE.Mesh(
-            stripeGeometry,
-            stripeMaterial
-        );
-
-    stripe.rotation.x =
-        -Math.PI / 2;
-
-    stripe.position.set(
-        -HALF_LENGTH +
-            stripeWidth / 2 +
-            i * stripeWidth,
-        0.012,
-        0
-    );
-
-    scene.add(stripe);
-}
+scene.add(
+    field
+);
 
 // ============================================================
 // FIELD MARKINGS
@@ -252,10 +179,10 @@ const lineMaterial =
     new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 0.85
+        opacity: 0.75
     });
 
-function groundLine(
+function createFieldLine(
     width,
     depth,
     x,
@@ -276,202 +203,228 @@ function groundLine(
 
     line.position.set(
         x,
-        0.025,
+        0.015,
         z
     );
 
-    scene.add(line);
+    scene.add(
+        line
+    );
 
     return line;
 }
 
 // Halfway line
 
-groundLine(
+createFieldLine(
     0.22,
     FIELD_WIDTH,
     0,
     0
 );
 
-// Centre circle.
-//
-// v0.4 used 100 points.
-// 64 is visually indistinguishable at this scale.
+// Goal area reference lines
+
+createFieldLine(
+    0.18,
+    GOAL_WIDTH + 10,
+    HALF_LENGTH - 18,
+    0
+);
+
+createFieldLine(
+    0.18,
+    GOAL_WIDTH + 10,
+    -HALF_LENGTH + 18,
+    0
+);
+
+// ============================================================
+// CENTRE CIRCLE
+// ============================================================
 
 const circlePoints = [];
 
-const CIRCLE_SEGMENTS = 64;
+const circleRadius = 10;
 
 for (
     let i = 0;
-    i <= CIRCLE_SEGMENTS;
+    i <= 100;
     i++
 ) {
 
     const angle =
-        i /
-        CIRCLE_SEGMENTS *
+        (i / 100) *
         Math.PI *
         2;
 
     circlePoints.push(
         new THREE.Vector3(
-            Math.cos(angle) * 10,
-            0.035,
-            Math.sin(angle) * 10
+            Math.cos(angle) *
+            circleRadius,
+            0.025,
+            Math.sin(angle) *
+            circleRadius
         )
     );
 }
 
-scene.add(
+const circleGeometry =
+    new THREE.BufferGeometry()
+        .setFromPoints(
+            circlePoints
+        );
+
+const circle =
     new THREE.Line(
-        new THREE.BufferGeometry()
-            .setFromPoints(
-                circlePoints
-            ),
-
+        circleGeometry,
         new THREE.LineBasicMaterial({
-            color: 0xffffff
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.75
         })
-    )
-);
+    );
 
-// Goal-area reference markings
-
-groundLine(
-    16,
-    0.18,
-    -HALF_LENGTH + 13,
-    GOAL_WIDTH / 2 + 4
-);
-
-groundLine(
-    16,
-    0.18,
-    -HALF_LENGTH + 13,
-    -GOAL_WIDTH / 2 - 4
-);
-
-groundLine(
-    16,
-    0.18,
-    HALF_LENGTH - 13,
-    GOAL_WIDTH / 2 + 4
-);
-
-groundLine(
-    16,
-    0.18,
-    HALF_LENGTH - 13,
-    -GOAL_WIDTH / 2 - 4
+scene.add(
+    circle
 );
 
 // ============================================================
-// WALLS
+// WALL MATERIALS
 // ============================================================
 
-const glassMaterial =
+const wallMaterial =
     new THREE.MeshStandardMaterial({
-        color: 0x8fdcff,
+        color: 0x80b8dd,
         transparent: true,
-        opacity: 0.17,
-        roughness: 0.3,
-        depthWrite: false
+        opacity: 0.18,
+        roughness: 0.4,
+        metalness: 0.1,
+        side: THREE.DoubleSide
     });
 
-function createWall(
-    width,
-    height,
-    depth,
-    x,
-    y,
-    z,
-    material = glassMaterial
-) {
+const wallFrameMaterial =
+    new THREE.MeshStandardMaterial({
+        color: 0x90c8e8,
+        roughness: 0.45,
+        metalness: 0.25
+    });
+
+// ============================================================
+// SIDE WALLS
+// ============================================================
+
+function createSideWall(z) {
 
     const wall =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                width,
-                height,
-                depth
+                FIELD_LENGTH,
+                WALL_HEIGHT,
+                0.5
             ),
-            material
+            wallMaterial
         );
 
     wall.position.set(
-        x,
-        y,
+        0,
+        WALL_HEIGHT / 2,
         z
     );
 
-    wall.receiveShadow = false;
+    wall.receiveShadow = true;
 
-    scene.add(wall);
-
-    return wall;
+    scene.add(
+        wall
+    );
 }
 
-// Side barriers
-
-createWall(
-    FIELD_LENGTH + 1,
-    WALL_HEIGHT,
-    0.6,
-    0,
-    WALL_HEIGHT / 2,
+createSideWall(
     HALF_WIDTH
 );
 
-createWall(
-    FIELD_LENGTH + 1,
-    WALL_HEIGHT,
-    0.6,
-    0,
-    WALL_HEIGHT / 2,
+createSideWall(
     -HALF_WIDTH
 );
 
-// End wall pieces
+// ============================================================
+// END WALL PIECES
+// ============================================================
 
-const endPieceDepth =
-    (
-        FIELD_WIDTH -
-        GOAL_WIDTH
-    ) / 2;
+function createEndWallPieces(x) {
 
-function createEndWalls(x) {
+    const sideWidth =
+        (
+            FIELD_WIDTH -
+            GOAL_WIDTH
+        ) / 2;
 
-    const offset =
-        GOAL_WIDTH / 2 +
-        endPieceDepth / 2;
+    for (
+        const direction of [-1, 1]
+    ) {
 
-    createWall(
-        0.6,
-        WALL_HEIGHT,
-        endPieceDepth,
-        x,
-        WALL_HEIGHT / 2,
-        offset
-    );
+        const wall =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    0.5,
+                    WALL_HEIGHT,
+                    sideWidth
+                ),
+                wallMaterial
+            );
 
-    createWall(
-        0.6,
-        WALL_HEIGHT,
-        endPieceDepth,
-        x,
-        WALL_HEIGHT / 2,
-        -offset
-    );
+        wall.position.set(
+            x,
+            WALL_HEIGHT / 2,
+            direction *
+            (
+                GOAL_WIDTH / 2 +
+                sideWidth / 2
+            )
+        );
+
+        scene.add(
+            wall
+        );
+    }
+
+    const topHeight =
+        WALL_HEIGHT -
+        GOAL_HEIGHT;
+
+    if (
+        topHeight > 0
+    ) {
+
+        const topWall =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    0.5,
+                    topHeight,
+                    GOAL_WIDTH
+                ),
+                wallMaterial
+            );
+
+        topWall.position.set(
+            x,
+            GOAL_HEIGHT +
+            topHeight / 2,
+            0
+        );
+
+        scene.add(
+            topWall
+        );
+    }
 }
 
-createEndWalls(
-    -HALF_LENGTH
+createEndWallPieces(
+    HALF_LENGTH
 );
 
-createEndWalls(
-    HALF_LENGTH
+createEndWallPieces(
+    -HALF_LENGTH
 );
 
 // ============================================================
@@ -483,110 +436,135 @@ function createGoal(
     colour
 ) {
 
-    const mouthX =
+    const x =
         side *
-        HALF_LENGTH;
+        (
+            HALF_LENGTH +
+            GOAL_DEPTH / 2
+        );
 
-    const centreX =
-        mouthX +
-        side *
-        GOAL_DEPTH / 2;
-
-    const backX =
-        mouthX +
-        side *
-        GOAL_DEPTH;
-
-    const transparent =
+    const goalMaterial =
         new THREE.MeshStandardMaterial({
             color: colour,
             transparent: true,
-            opacity: 0.24,
-            roughness: 0.45,
-            depthWrite: false
+            opacity: 0.13,
+            roughness: 0.55,
+            metalness: 0.05,
+            side: THREE.DoubleSide
         });
 
-    const frame =
+    const postMaterial =
         new THREE.MeshStandardMaterial({
             color: colour,
-            roughness: 0.35
+            roughness: 0.4,
+            metalness: 0.25
         });
 
-    // Back
+    // Back wall
 
-    createWall(
-        0.7,
-        GOAL_HEIGHT,
-        GOAL_WIDTH,
-        backX,
+    const back =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                0.4,
+                GOAL_HEIGHT,
+                GOAL_WIDTH
+            ),
+            goalMaterial
+        );
+
+    back.position.set(
+        side *
+        (
+            HALF_LENGTH +
+            GOAL_DEPTH
+        ),
         GOAL_HEIGHT / 2,
-        0,
-        transparent
+        0
+    );
+
+    scene.add(
+        back
     );
 
     // Roof
 
-    createWall(
-        GOAL_DEPTH,
-        0.6,
-        GOAL_WIDTH,
-        centreX,
-        GOAL_HEIGHT,
-        0,
-        transparent
-    );
-
-    // Goal sides
-
-    createWall(
-        GOAL_DEPTH,
-        GOAL_HEIGHT,
-        0.6,
-        centreX,
-        GOAL_HEIGHT / 2,
-        GOAL_WIDTH / 2,
-        transparent
-    );
-
-    createWall(
-        GOAL_DEPTH,
-        GOAL_HEIGHT,
-        0.6,
-        centreX,
-        GOAL_HEIGHT / 2,
-        -GOAL_WIDTH / 2,
-        transparent
-    );
-
-    // Posts
-
-    const postGeometry =
-        new THREE.BoxGeometry(
-            0.8,
-            GOAL_HEIGHT,
-            0.8
+    const roof =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                GOAL_DEPTH,
+                0.35,
+                GOAL_WIDTH
+            ),
+            goalMaterial
         );
 
+    roof.position.set(
+        x,
+        GOAL_HEIGHT,
+        0
+    );
+
+    scene.add(
+        roof
+    );
+
+    // Side walls
+
     for (
-        const z of [
-            -GOAL_WIDTH / 2,
+        const zDirection of [-1, 1]
+    ) {
+
+        const sideWall =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    GOAL_DEPTH,
+                    GOAL_HEIGHT,
+                    0.35
+                ),
+                goalMaterial
+            );
+
+        sideWall.position.set(
+            x,
+            GOAL_HEIGHT / 2,
+            zDirection *
             GOAL_WIDTH / 2
-        ]
+        );
+
+        scene.add(
+            sideWall
+        );
+    }
+
+    // Goal posts
+
+    for (
+        const zDirection of [-1, 1]
     ) {
 
         const post =
             new THREE.Mesh(
-                postGeometry,
-                frame
+                new THREE.BoxGeometry(
+                    0.65,
+                    GOAL_HEIGHT,
+                    0.65
+                ),
+                postMaterial
             );
 
         post.position.set(
-            mouthX,
+            side *
+            HALF_LENGTH,
             GOAL_HEIGHT / 2,
-            z
+            zDirection *
+            GOAL_WIDTH / 2
         );
 
-        scene.add(post);
+        post.castShadow = true;
+
+        scene.add(
+            post
+        );
     }
 
     // Crossbar
@@ -594,30 +572,35 @@ function createGoal(
     const crossbar =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                0.8,
-                0.8,
-                GOAL_WIDTH
+                0.65,
+                0.65,
+                GOAL_WIDTH + 0.65
             ),
-            frame
+            postMaterial
         );
 
     crossbar.position.set(
-        mouthX,
+        side *
+        HALF_LENGTH,
         GOAL_HEIGHT,
         0
     );
 
-    scene.add(crossbar);
+    crossbar.castShadow = true;
+
+    scene.add(
+        crossbar
+    );
 }
+
+createGoal(
+    1,
+    0xff7a16
+);
 
 createGoal(
     -1,
     0x168cff
-);
-
-createGoal(
-    1,
-    0xff7417
 );
 
 // ============================================================
@@ -627,12 +610,11 @@ createGoal(
 const car =
     new THREE.Group();
 
-const bodyMaterial =
-    new THREE.MeshStandardMaterial({
-        color: 0x168cff,
-        roughness: 0.35,
-        metalness: 0.25
-    });
+scene.add(
+    car
+);
+
+// Body
 
 const body =
     new THREE.Mesh(
@@ -641,72 +623,78 @@ const body =
             1.1,
             2.35
         ),
-        bodyMaterial
+        new THREE.MeshStandardMaterial({
+            color: 0x168cff,
+            roughness: 0.35,
+            metalness: 0.25
+        })
     );
 
-body.position.y = 1;
-body.castShadow =
-    QUALITY.shadows;
+body.position.y =
+    0.95;
 
-car.add(body);
+body.castShadow = true;
+body.receiveShadow = true;
+
+car.add(
+    body
+);
 
 // Nose
-
-const noseMaterial =
-    new THREE.MeshStandardMaterial({
-        color: 0x0870d5,
-        roughness: 0.4
-    });
 
 const nose =
     new THREE.Mesh(
         new THREE.BoxGeometry(
             1.2,
-            0.55,
-            2.15
+            0.65,
+            2.05
         ),
-        noseMaterial
+        new THREE.MeshStandardMaterial({
+            color: 0x0875db,
+            roughness: 0.38,
+            metalness: 0.2
+        })
     );
 
 nose.position.set(
-    2.15,
-    0.72,
+    2.25,
+    0.78,
     0
 );
 
-nose.castShadow =
-    QUALITY.shadows;
+nose.castShadow = true;
 
-car.add(nose);
+car.add(
+    nose
+);
 
 // Cabin
-
-const cabinMaterial =
-    new THREE.MeshStandardMaterial({
-        color: 0xa4ecff,
-        roughness: 0.2
-    });
 
 const cabin =
     new THREE.Mesh(
         new THREE.BoxGeometry(
-            1.9,
+            1.85,
             0.85,
-            1.75
+            1.85
         ),
-        cabinMaterial
+        new THREE.MeshStandardMaterial({
+            color: 0x183149,
+            roughness: 0.25,
+            metalness: 0.15
+        })
     );
 
 cabin.position.set(
-    -0.25,
-    1.72,
+    -0.35,
+    1.75,
     0
 );
 
-cabin.castShadow =
-    QUALITY.shadows;
+cabin.castShadow = true;
 
-car.add(cabin);
+car.add(
+    cabin
+);
 
 // ============================================================
 // WHEELS
@@ -718,11 +706,9 @@ const wheelGeometry =
     new THREE.CylinderGeometry(
         0.55,
         0.55,
-        0.45,
+        0.42,
         16
     );
-
-// Bake wheel orientation into shared geometry.
 
 wheelGeometry.rotateX(
     Math.PI / 2
@@ -731,16 +717,14 @@ wheelGeometry.rotateX(
 const wheelMaterial =
     new THREE.MeshStandardMaterial({
         color: 0x111111,
-        roughness: 0.9
+        roughness: 0.9,
+        metalness: 0.05
     });
 
-function createWheel(
+function addWheel(
     x,
     z
 ) {
-
-    // v0.4 cloned the geometry four times.
-    // Three.js meshes can safely share immutable geometry.
 
     const wheel =
         new THREE.Mesh(
@@ -754,35 +738,36 @@ function createWheel(
         z
     );
 
-    wheel.castShadow =
-        QUALITY.shadows;
+    wheel.castShadow = true;
 
-    car.add(wheel);
+    car.add(
+        wheel
+    );
 
-    wheels.push(wheel);
+    wheels.push(
+        wheel
+    );
 }
 
-createWheel(
-    -1.35,
-    -1.2
-);
-
-createWheel(
-    -1.35,
-    1.2
-);
-
-createWheel(
+addWheel(
     1.35,
-    -1.2
+    1.25
 );
 
-createWheel(
+addWheel(
     1.35,
-    1.2
+    -1.25
 );
 
-scene.add(car);
+addWheel(
+    -1.35,
+    1.25
+);
+
+addWheel(
+    -1.35,
+    -1.25
+);
 
 // ============================================================
 // BALL
@@ -796,15 +781,17 @@ const ball =
             16
         ),
         new THREE.MeshStandardMaterial({
-            color: 0xf7f7f7,
-            roughness: 0.5
+            color: 0xf4f4f4,
+            roughness: 0.55,
+            metalness: 0.05
         })
     );
 
-ball.castShadow =
-    QUALITY.shadows;
+ball.castShadow = true;
 
-scene.add(ball);
+scene.add(
+    ball
+);
 
 const ballVelocity =
     new THREE.Vector3();
@@ -827,26 +814,33 @@ let boostAmount = 33;
 // Engine
 
 const ACCELERATION = 29;
+
 const REVERSE_ACCELERATION = 18;
+
 const BRAKING = 34;
 
 // Speeds
 
 const DRIVE_TOP_SPEED = 29;
+
 const REVERSE_TOP_SPEED = 15;
+
 const BOOST_TOP_SPEED = 45;
 
 // Boost
 
 const BOOST_ACCELERATION = 43;
+
 const BOOST_USAGE = 33;
 
 // Ground physics
 
 const NORMAL_GRIP = 7.0;
+
 const POWERSLIDE_GRIP = 1.15;
 
 const COAST_DRAG = 0.18;
+
 const POWERED_DRAG = 0.06;
 
 // Air
@@ -856,56 +850,354 @@ const GRAVITY = 27;
 // Steering
 
 const LOW_SPEED_STEER = 2.65;
+
 const HIGH_SPEED_STEER = 1.65;
 
 const POWERSLIDE_STEER_MULTIPLIER =
     1.35;
 
 // ============================================================
-// CONTROL BINDINGS
+// CONTROL BINDINGS — v0.4.2 CONTROL FREAK
 // ============================================================
 
-const controls = {
-
+const DEFAULT_CONTROLS = {
     throttle: "w",
     reverse: "s",
-
     left: "a",
     right: "d",
-
     jump: " ",
     boost: "shift",
-
     powerslide: "control",
-
     ballCam: "c",
     reset: "r",
-
     menu: "tab"
 };
+
+const CONTROL_STORAGE_KEY =
+    "boostball-controls-v042";
+
+const controls = {
+    ...DEFAULT_CONTROLS
+};
+
+function loadControls() {
+
+    try {
+
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    CONTROL_STORAGE_KEY
+                )
+            );
+
+        if (
+            saved &&
+            typeof saved === "object"
+        ) {
+
+            for (
+                const action of
+                Object.keys(
+                    DEFAULT_CONTROLS
+                )
+            ) {
+
+                if (
+                    typeof saved[action] ===
+                    "string"
+                ) {
+
+                    controls[action] =
+                        saved[action];
+                }
+            }
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Could not load controls:",
+            error
+        );
+    }
+}
+
+function saveControls() {
+
+    try {
+
+        localStorage.setItem(
+            CONTROL_STORAGE_KEY,
+            JSON.stringify(
+                controls
+            )
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Could not save controls:",
+            error
+        );
+    }
+}
+
+function resetControls() {
+
+    Object.assign(
+        controls,
+        DEFAULT_CONTROLS
+    );
+
+    saveControls();
+}
+
+loadControls();
 
 // ============================================================
 // INPUT
 // ============================================================
 
 const keys = {};
+
 const pressed = {};
 
 let menuOpen = false;
+
+let rebindingAction = null;
+
+let controlNotice = "";
+
+function normalizeKey(event) {
+
+    if (
+        event.key === " "
+    ) {
+
+        return " ";
+    }
+
+    return event.key
+        .toLowerCase();
+}
+
+function clearHeldInputs() {
+
+    for (
+        const key in keys
+    ) {
+
+        keys[key] = false;
+    }
+
+    for (
+        const key in pressed
+    ) {
+
+        pressed[key] = false;
+    }
+}
+
+function browserShortcutActive(
+    event
+) {
+
+    return (
+        event.altKey ||
+        event.metaKey ||
+        (
+            event.ctrlKey &&
+            event.key.toLowerCase() !==
+            "control"
+        )
+    );
+}
+
+function isProtectedBinding(
+    event
+) {
+
+    const key =
+        normalizeKey(
+            event
+        );
+
+    if (
+        event.altKey ||
+        event.metaKey
+    ) {
+
+        return true;
+    }
+
+    if (
+        event.ctrlKey &&
+        key !== "control"
+    ) {
+
+        return true;
+    }
+
+    return false;
+}
 
 window.addEventListener(
     "keydown",
     event => {
 
         const key =
-            event.key
-                .toLowerCase();
+            normalizeKey(
+                event
+            );
 
-        // TAB MENU
+        // ====================================================
+        // REBINDING MODE
+        // ====================================================
 
         if (
-            key ===
-                controls.menu &&
+            rebindingAction
+        ) {
+
+            // ESC cancels rebinding.
+
+            if (
+                key === "escape"
+            ) {
+
+                event.preventDefault();
+
+                rebindingAction =
+                    null;
+
+                controlNotice =
+                    "Binding cancelled.";
+
+                updateMenu();
+
+                return;
+            }
+
+            // Never steal browser / OS shortcuts such as
+            // CTRL+TAB, CTRL+SHIFT+TAB or ALT+TAB.
+
+            if (
+                isProtectedBinding(
+                    event
+                )
+            ) {
+
+                controlNotice =
+                    "That shortcut is reserved for your browser or operating system.";
+
+                updateMenu();
+
+                return;
+            }
+
+            // Menu stays TAB so there is always a predictable
+            // way to get in and out of the controls screen.
+
+            if (
+                rebindingAction ===
+                "menu"
+            ) {
+
+                controlNotice =
+                    "TAB is kept as the menu key.";
+
+                rebindingAction =
+                    null;
+
+                updateMenu();
+
+                return;
+            }
+
+            // Don't allow TAB as another gameplay binding.
+
+            if (
+                key === "tab"
+            ) {
+
+                event.preventDefault();
+
+                controlNotice =
+                    "TAB is reserved for the Boostball menu.";
+
+                updateMenu();
+
+                return;
+            }
+
+            // Reject duplicate controls instead of silently
+            // moving the old action somewhere else.
+
+            const duplicateAction =
+                Object.keys(
+                    controls
+                ).find(
+                    action =>
+                        action !==
+                            rebindingAction &&
+                        controls[action] ===
+                            key
+                );
+
+            if (
+                duplicateAction
+            ) {
+
+                event.preventDefault();
+
+                controlNotice =
+                    `${readableKey(key)} is already bound to ${readableAction(duplicateAction)}.`;
+
+                updateMenu();
+
+                return;
+            }
+
+            event.preventDefault();
+
+            controls[
+                rebindingAction
+            ] = key;
+
+            controlNotice =
+                `${readableAction(rebindingAction)} → ${readableKey(key)}`;
+
+            rebindingAction =
+                null;
+
+            saveControls();
+
+            clearHeldInputs();
+
+            updateMenu();
+
+            return;
+        }
+
+        // ====================================================
+        // LEAVE BROWSER / OS SHORTCUTS ALONE
+        // ====================================================
+
+        if (
+            browserShortcutActive(
+                event
+            )
+        ) {
+
+            return;
+        }
+
+        // ====================================================
+        // TAB MENU
+        // ====================================================
+
+        if (
+            key === controls.menu &&
             !pressed[key]
         ) {
 
@@ -913,6 +1205,10 @@ window.addEventListener(
 
             menuOpen =
                 !menuOpen;
+
+            clearHeldInputs();
+
+            controlNotice = "";
 
             updateMenu();
 
@@ -922,16 +1218,40 @@ window.addEventListener(
             return;
         }
 
-        if (menuOpen) {
+        // ====================================================
+        // MENU IS OPEN
+        // ====================================================
 
-            event.preventDefault();
+        if (
+            menuOpen
+        ) {
+
+            // Keep the page from reacting to ordinary
+            // gameplay keys while the menu is open.
+
+            if (
+                key === " " ||
+                key.startsWith(
+                    "arrow"
+                )
+            ) {
+
+                event.preventDefault();
+            }
 
             return;
         }
 
-        keys[key] = true;
+        // ====================================================
+        // GAMEPLAY INPUT
+        // ====================================================
 
-        if (!pressed[key]) {
+        keys[key] =
+            true;
+
+        if (
+            !pressed[key]
+        ) {
 
             pressed[key] =
                 true;
@@ -939,8 +1259,7 @@ window.addEventListener(
             if (
                 key ===
                     controls.jump &&
-                !goalPause &&
-                !matchEnded
+                !goalPause
             ) {
 
                 jump();
@@ -960,16 +1279,13 @@ window.addEventListener(
                 controls.reset
             ) {
 
-                if (matchEnded) {
-
-                    startNewMatch();
-
-                } else {
-
-                    resetKickoff();
-                }
+                resetKickoff();
             }
         }
+
+        // Prevent normal page actions only for keys that the
+        // game itself needs. Modifier shortcuts were already
+        // allowed above.
 
         if (
             key === " " ||
@@ -989,11 +1305,26 @@ window.addEventListener(
     event => {
 
         const key =
-            event.key
-                .toLowerCase();
+            normalizeKey(
+                event
+            );
 
-        keys[key] = false;
-        pressed[key] = false;
+        keys[key] =
+            false;
+
+        pressed[key] =
+            false;
+    }
+);
+
+// If you Alt+Tab / Ctrl+Tab away while holding W,
+// don't come back to a permanently accelerating car.
+
+window.addEventListener(
+    "blur",
+    () => {
+
+        clearHeldInputs();
     }
 );
 
@@ -1007,7 +1338,7 @@ const decalMaterialSmall =
     new THREE.MeshBasicMaterial({
         color: 0xd6a728,
         transparent: true,
-        opacity: 0.62,
+        opacity: 0.65,
         side: THREE.DoubleSide
     });
 
@@ -1015,93 +1346,79 @@ const decalMaterialBig =
     new THREE.MeshBasicMaterial({
         color: 0xff8c18,
         transparent: true,
-        opacity: 0.76,
+        opacity: 0.8,
         side: THREE.DoubleSide
     });
-
-const markerMaterialSmall =
-    new THREE.MeshBasicMaterial({
-        color: 0x75621d,
-        transparent: true,
-        opacity: 0.52,
-        side: THREE.DoubleSide
-    });
-
-const markerMaterialBig =
-    new THREE.MeshBasicMaterial({
-        color: 0x7c4915,
-        transparent: true,
-        opacity: 0.52,
-        side: THREE.DoubleSide
-    });
-
-const pickupMaterialSmall =
-    new THREE.MeshStandardMaterial({
-        color: 0xffc72c,
-        emissive: 0x6a3a00,
-        emissiveIntensity: 1.2
-    });
-
-const pickupMaterialBig =
-    new THREE.MeshStandardMaterial({
-        color: 0xff8c18,
-        emissive: 0x7d2900,
-        emissiveIntensity: 1.7
-    });
-
-// Shared boost geometry.
-
-const smallDecalGeometry =
-    new THREE.RingGeometry(
-        0.8,
-        1.35,
-        20
-    );
-
-const bigDecalGeometry =
-    new THREE.RingGeometry(
-        1.35,
-        2.1,
-        20
-    );
-
-const smallMarkerGeometry =
-    new THREE.CircleGeometry(
-        0.62,
-        16
-    );
-
-const bigMarkerGeometry =
-    new THREE.CircleGeometry(
-        1.1,
-        16
-    );
 
 const smallRingGeometry =
-    new THREE.TorusGeometry(
-        0.8,
-        0.1,
-        6,
-        16
+    new THREE.RingGeometry(
+        1.15,
+        1.55,
+        20
     );
 
 const bigRingGeometry =
-    new THREE.TorusGeometry(
-        1.35,
-        0.15,
-        6,
+    new THREE.RingGeometry(
+        1.65,
+        2.15,
+        24
+    );
+
+const smallCircleGeometry =
+    new THREE.CircleGeometry(
+        0.55,
         16
+    );
+
+const bigCircleGeometry =
+    new THREE.CircleGeometry(
+        0.8,
+        20
+    );
+
+const smallTorusGeometry =
+    new THREE.TorusGeometry(
+        0.72,
+        0.15,
+        8,
+        16
+    );
+
+const bigTorusGeometry =
+    new THREE.TorusGeometry(
+        1.05,
+        0.2,
+        8,
+        18
     );
 
 const smallOrbGeometry =
     new THREE.OctahedronGeometry(
-        0.38
+        0.45,
+        0
     );
 
 const bigOrbGeometry =
     new THREE.OctahedronGeometry(
-        0.72
+        0.7,
+        0
     );
+
+const smallPickupMaterial =
+    new THREE.MeshStandardMaterial({
+        color: 0xffd34f,
+        emissive: 0x7f4c00,
+        emissiveIntensity: 0.7,
+        roughness: 0.4
+    });
+
+const bigPickupMaterial =
+    new THREE.MeshStandardMaterial({
+        color: 0xff9d25,
+        emissive: 0x9a3900,
+        emissiveIntensity: 0.9,
+        roughness: 0.35
+    });
 
 function createBoostPad(
     x,
@@ -1109,14 +1426,24 @@ function createBoostPad(
     big = false
 ) {
 
-    // Permanent floor decal
+    const group =
+        new THREE.Group();
+
+    group.position.set(
+        x,
+        0,
+        z
+    );
+
+    scene.add(
+        group
+    );
 
     const decal =
         new THREE.Mesh(
             big
-                ? bigDecalGeometry
-                : smallDecalGeometry,
-
+                ? bigRingGeometry
+                : smallRingGeometry,
             big
                 ? decalMaterialBig
                 : decalMaterialSmall
@@ -1125,119 +1452,110 @@ function createBoostPad(
     decal.rotation.x =
         -Math.PI / 2;
 
-    decal.position.set(
-        x,
-        0.04,
-        z
+    decal.position.y =
+        0.025;
+
+    group.add(
+        decal
     );
 
-    scene.add(decal);
-
-    // Inner marker
-
-    const marker =
+    const inner =
         new THREE.Mesh(
             big
-                ? bigMarkerGeometry
-                : smallMarkerGeometry,
-
-            big
-                ? markerMaterialBig
-                : markerMaterialSmall
+                ? bigCircleGeometry
+                : smallCircleGeometry,
+            new THREE.MeshBasicMaterial({
+                color:
+                    big
+                        ? 0xff7a00
+                        : 0xd8aa28,
+                transparent: true,
+                opacity:
+                    big
+                        ? 0.35
+                        : 0.28,
+                side: THREE.DoubleSide
+            })
         );
 
-    marker.rotation.x =
+    inner.rotation.x =
         -Math.PI / 2;
 
-    marker.position.set(
-        x,
-        0.041,
-        z
+    inner.position.y =
+        0.028;
+
+    group.add(
+        inner
     );
-
-    scene.add(marker);
-
-    // Pickup
 
     const pickup =
         new THREE.Group();
 
-    pickup.position.set(
-        x,
-        0.1,
-        z
+    pickup.position.y =
+        big
+            ? 1.2
+            : 0.85;
+
+    group.add(
+        pickup
     );
 
     const ring =
         new THREE.Mesh(
             big
-                ? bigRingGeometry
-                : smallRingGeometry,
-
+                ? bigTorusGeometry
+                : smallTorusGeometry,
             big
-                ? pickupMaterialBig
-                : pickupMaterialSmall
+                ? bigPickupMaterial
+                : smallPickupMaterial
         );
 
     ring.rotation.x =
         Math.PI / 2;
 
-    ring.position.y =
-        big
-            ? 0.45
-            : 0.28;
-
-    pickup.add(ring);
+    pickup.add(
+        ring
+    );
 
     const orb =
         new THREE.Mesh(
             big
                 ? bigOrbGeometry
                 : smallOrbGeometry,
-
             big
-                ? pickupMaterialBig
-                : pickupMaterialSmall
+                ? bigPickupMaterial
+                : smallPickupMaterial
         );
 
-    orb.position.y =
+    pickup.add(
+        orb
+    );
+
+    const pickupRadius =
         big
-            ? 1.15
-            : 0.7;
-
-    pickup.add(orb);
-
-    scene.add(pickup);
+            ? 3.0
+            : 2.25;
 
     boostPads.push({
-
-        pickup,
-        orb,
-
         x,
         z,
-
         big,
-
-        // Squared pickup radius.
-        // Avoids Math.sqrt every frame.
-
-        pickupRadiusSq:
-            big
-                ? 2.8 * 2.8
-                : 2 * 2,
-
+        group,
+        pickup,
+        orb,
         active: true,
-
-        timer: 0
+        timer: 0,
+        pickupRadiusSq:
+            pickupRadius *
+            pickupRadius
     });
 }
 
 // ============================================================
-// SPACED PAD LAYOUT
+// BOOST PAD LAYOUT
 // ============================================================
 
-// Small midfield
+// Small pads
 
 createBoostPad(
     0,
@@ -1253,8 +1571,6 @@ createBoostPad(
     0,
     -25
 );
-
-// Blue half
 
 createBoostPad(
     -27,
@@ -1280,8 +1596,6 @@ createBoostPad(
     -56,
     -27
 );
-
-// Orange half
 
 createBoostPad(
     27,
@@ -1351,6 +1665,7 @@ createBoostPad(
 // ============================================================
 
 let blueScore = 0;
+
 let orangeScore = 0;
 
 let gameTime = 300;
@@ -1358,22 +1673,13 @@ let gameTime = 300;
 let ballCam = true;
 
 let goalPause = false;
+
 let goalPauseTimer = 0;
 
 let goalText = "";
 
-// v0.4.1 match states
-
-let overtime = false;
-let matchEnded = false;
-
-let matchResult = "";
-
-let lastTime =
-    performance.now();
-
 // ============================================================
-// HUD + MENU
+// HUD
 // ============================================================
 
 const hud =
@@ -1382,64 +1688,82 @@ const hud =
     );
 
 hud.innerHTML = `
-
-    <h1>
+    <h1 style="
+        margin:0;
+        font-size:28px;
+        letter-spacing:2px;
+    ">
         BOOSTBALL
     </h1>
 
-    <p id="score">
+    <div
+        id="score"
+        style="
+            margin-top:5px;
+            font-size:20px;
+        "
+    >
         Blue 0 - 0 Orange
-    </p>
+    </div>
 
-    <p id="timer">
+    <div
+        id="timer"
+        style="
+            margin-top:4px;
+            font-size:18px;
+            font-weight:bold;
+        "
+    >
         5:00
-    </p>
+    </div>
 
-    <p id="boost">
+    <div
+        id="boost"
+        style="
+            margin-top:5px;
+            font-size:16px;
+        "
+    >
         BOOST: 33
-    </p>
+    </div>
 
-    <p
+    <div
         id="cameraMode"
         style="
+            margin-top:3px;
             font-size:13px;
-            opacity:0.8;
+            opacity:0.75;
         "
     >
         BALL CAM
-    </p>
+    </div>
 
     <div
         id="goalMessage"
         style="
-            font-size:48px;
+            margin-top:12px;
+            font-size:28px;
             font-weight:bold;
-            margin-top:20px;
-            min-height:60px;
+            min-height:34px;
         "
     ></div>
 
-    <p
-        id="matchHint"
+    <div
         style="
+            margin-top:8px;
             font-size:12px;
-            opacity:0.55;
+            opacity:0.6;
         "
     >
         TAB — Menu
-    </p>
+    </div>
 `;
 
-// Cache HUD elements ONCE.
+// Cache HUD DOM once.
 
 const scoreElement =
     document.getElementById(
         "score"
-    );
-
-const timerElement =
-    document.getElementById(
-        "timer"
     );
 
 const boostElement =
@@ -1457,101 +1781,20 @@ const goalMessageElement =
         "goalMessage"
     );
 
-const matchHintElement =
+const timerElement =
     document.getElementById(
-        "matchHint"
+        "timer"
     );
-
-// Remember previous HUD strings.
-//
-// If nothing changed, don't poke the DOM.
 
 let previousScore = "";
-let previousTimer = "";
+
 let previousBoost = "";
+
 let previousCamera = "";
-let previousMessage = "";
-let previousHint = "";
 
-// ============================================================
-// FPS DISPLAY
-// ============================================================
+let previousGoalMessage = "";
 
-const fpsDisplay =
-    document.createElement(
-        "div"
-    );
-
-fpsDisplay.style.cssText = `
-
-    position:absolute;
-
-    right:15px;
-    top:15px;
-
-    padding:7px 10px;
-
-    color:white;
-
-    background:
-        rgba(0,0,0,0.42);
-
-    border:
-        1px solid
-        rgba(255,255,255,0.12);
-
-    border-radius:7px;
-
-    font-family:
-        monospace;
-
-    font-size:13px;
-
-    z-index:20;
-
-    pointer-events:none;
-
-`;
-
-document.body.appendChild(
-    fpsDisplay
-);
-
-let fpsFrames = 0;
-let fpsTimer = 0;
-let displayedFPS = 0;
-
-function updateFPS(dt) {
-
-    if (!QUALITY.showFPS) {
-
-        fpsDisplay.style.display =
-            "none";
-
-        return;
-    }
-
-    fpsDisplay.style.display =
-        "block";
-
-    fpsFrames++;
-    fpsTimer += dt;
-
-    if (fpsTimer >= 0.5) {
-
-        displayedFPS =
-            Math.round(
-                fpsFrames /
-                fpsTimer
-            );
-
-        fpsDisplay.textContent =
-            `${displayedFPS} FPS`;
-
-        fpsFrames = 0;
-        fpsTimer = 0;
-    }
-}
+let previousTimer = "";
 
 // ============================================================
 // MENU
@@ -1562,99 +1805,176 @@ const menu =
         "div"
     );
 
-menu.id =
-    "boostball-menu";
-
 menu.style.cssText = `
-
-    display:none;
-
     position:absolute;
-
-    left:50%;
-    top:50%;
-
-    transform:
-        translate(-50%, -50%);
-
-    width:
-        min(520px, 85vw);
-
-    padding:
-        28px 34px;
-
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(2,6,14,0.82);
+    z-index:50;
     color:white;
-
-    background:
-        rgba(5, 12, 25, 0.94);
-
-    border:
-        1px solid
-        rgba(255,255,255,0.25);
-
-    border-radius:
-        18px;
-
-    box-shadow:
-        0 18px 60px
-        rgba(0,0,0,0.5);
-
-    z-index:100;
-
-    font-family:
-        Arial,sans-serif;
+    font-family:Arial,sans-serif;
 `;
 
 document.body.appendChild(
     menu
 );
 
-function readableKey(key) {
-
-    if (key === " ")
-        return "SPACE";
-
-    if (key === "control")
-        return "LEFT CTRL";
-
-    if (key === "shift")
-        return "SHIFT";
-
-    if (key === "tab")
-        return "TAB";
-
-    return key.toUpperCase();
-}
-
-function menuRow(
-    name,
+function readableKey(
     key
 ) {
 
+    if (
+        key === " "
+    ) {
+
+        return "SPACE";
+    }
+
+    if (
+        key === "control"
+    ) {
+
+        return "CTRL";
+    }
+
+    if (
+        key === "shift"
+    ) {
+
+        return "SHIFT";
+    }
+
+    if (
+        key === "tab"
+    ) {
+
+        return "TAB";
+    }
+
+    if (
+        key === "escape"
+    ) {
+
+        return "ESC";
+    }
+
+    if (
+        key.startsWith(
+            "arrow"
+        )
+    ) {
+
+        return key
+            .replace(
+                "arrow",
+                "ARROW "
+            )
+            .toUpperCase();
+    }
+
+    return key
+        .toUpperCase();
+}
+
+function readableAction(
+    action
+) {
+
+    const names = {
+        throttle:
+            "Forward",
+        reverse:
+            "Reverse / Brake",
+        left:
+            "Steer Left",
+        right:
+            "Steer Right",
+        jump:
+            "Jump",
+        boost:
+            "Boost",
+        powerslide:
+            "Powerslide",
+        ballCam:
+            "Ball Cam",
+        reset:
+            "Reset",
+        menu:
+            "Menu"
+    };
+
+    return (
+        names[action] ||
+        action
+    );
+}
+
+function menuRow(
+    action
+) {
+
+    const waiting =
+        rebindingAction ===
+        action;
+
+    const locked =
+        action === "menu";
+
     return `
-
-        <div style="
-            display:flex;
-            justify-content:
-                space-between;
-            align-items:center;
-
-            padding:9px 0;
-
-            border-bottom:
-                1px solid
-                rgba(255,255,255,0.07);
-        ">
-
+        <button
+            class="boostball-control-button"
+            data-action="${action}"
+            ${locked ? "disabled" : ""}
+            style="
+                width:100%;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                gap:20px;
+                padding:11px 13px;
+                margin:6px 0;
+                border-radius:8px;
+                border:1px solid ${
+                    waiting
+                        ? "rgba(255,210,60,0.9)"
+                        : "rgba(255,255,255,0.14)"
+                };
+                background:${
+                    waiting
+                        ? "rgba(255,190,20,0.18)"
+                        : "rgba(255,255,255,0.06)"
+                };
+                color:white;
+                cursor:${
+                    locked
+                        ? "default"
+                        : "pointer"
+                };
+                text-align:left;
+                font-size:15px;
+                opacity:${
+                    locked
+                        ? "0.65"
+                        : "1"
+                };
+            "
+        >
             <span>
-                ${name}
+                ${readableAction(action)}
             </span>
 
             <strong>
-                ${key}
+                ${
+                    waiting
+                        ? "PRESS A KEY..."
+                        : readableKey(
+                            controls[action]
+                        )
+                }
             </strong>
-
-        </div>
+        </button>
     `;
 }
 
@@ -1662,123 +1982,178 @@ function updateMenu() {
 
     menu.style.display =
         menuOpen
-            ? "block"
+            ? "flex"
             : "none";
 
-    if (!menuOpen)
+    if (
+        !menuOpen
+    ) {
+
+        rebindingAction =
+            null;
+
         return;
+    }
 
     menu.innerHTML = `
-
         <div style="
-            font-size:30px;
-            font-weight:bold;
-            margin-bottom:5px;
+            width:min(520px,calc(100vw - 40px));
+            max-height:calc(100vh - 40px);
+            overflow:auto;
+            box-sizing:border-box;
+            padding:28px;
+            border-radius:14px;
+            background:rgba(9,18,31,0.97);
+            border:1px solid rgba(255,255,255,0.15);
+            box-shadow:0 18px 60px rgba(0,0,0,0.45);
         ">
-            BOOSTBALL
-        </div>
 
-        <div style="
-            opacity:0.6;
-            margin-bottom:24px;
-        ">
-            v0.4.1 — MINI BEAST
-        </div>
+            <div style="
+                text-align:center;
+                font-size:26px;
+                font-weight:bold;
+                letter-spacing:1px;
+            ">
+                BOOSTBALL
+            </div>
 
-        ${menuRow(
-            "Drive Forward",
-            readableKey(
-                controls.throttle
-            )
-        )}
+            <div style="
+                text-align:center;
+                opacity:0.6;
+                margin-top:4px;
+                margin-bottom:18px;
+            ">
+                v0.4.2 · CONTROL FREAK
+            </div>
 
-        ${menuRow(
-            "Reverse / Brake",
-            readableKey(
-                controls.reverse
-            )
-        )}
+            <div style="
+                text-align:center;
+                font-size:13px;
+                opacity:0.75;
+                line-height:1.5;
+                margin-bottom:18px;
+            ">
+                Click a control, then press its new key.
+                CTRL/ALT browser shortcuts stay available.
+            </div>
 
-        ${menuRow(
-            "Steer Left",
-            readableKey(
-                controls.left
-            )
-        )}
+            ${menuRow("throttle")}
+            ${menuRow("reverse")}
+            ${menuRow("left")}
+            ${menuRow("right")}
+            ${menuRow("jump")}
+            ${menuRow("boost")}
+            ${menuRow("powerslide")}
+            ${menuRow("ballCam")}
+            ${menuRow("reset")}
+            ${menuRow("menu")}
 
-        ${menuRow(
-            "Steer Right",
-            readableKey(
-                controls.right
-            )
-        )}
+            <div
+                id="controlNotice"
+                style="
+                    min-height:20px;
+                    margin-top:13px;
+                    text-align:center;
+                    font-size:13px;
+                    color:#ffd85a;
+                "
+            >
+                ${controlNotice}
+            </div>
 
-        ${menuRow(
-            "Jump",
-            readableKey(
-                controls.jump
-            )
-        )}
+            <button
+                id="resetControlsButton"
+                style="
+                    width:100%;
+                    margin-top:8px;
+                    padding:11px 14px;
+                    border-radius:8px;
+                    border:1px solid rgba(255,255,255,0.18);
+                    background:rgba(255,255,255,0.08);
+                    color:white;
+                    cursor:pointer;
+                    font-weight:bold;
+                "
+            >
+                Reset Controls to Defaults
+            </button>
 
-        ${menuRow(
-            "Boost",
-            readableKey(
-                controls.boost
-            )
-        )}
-
-        ${menuRow(
-            "Powerslide",
-            readableKey(
-                controls.powerslide
-            )
-        )}
-
-        ${menuRow(
-            "Ball Cam",
-            readableKey(
-                controls.ballCam
-            )
-        )}
-
-        ${menuRow(
-            matchEnded
-                ? "New Match"
-                : "Reset Kickoff",
-
-            readableKey(
-                controls.reset
-            )
-        )}
-
-        <div style="
-            margin-top:22px;
-            opacity:0.65;
-            font-size:13px;
-            line-height:1.7;
-        ">
-            Quality: MEDIUM<br>
-            FPS Limit: 60<br>
-            Shadows: ON — 1024<br>
-            Render Scale: 100%
-        </div>
-
-        <div style="
-            margin-top:20px;
-            padding-top:18px;
-
-            border-top:
-                1px solid
-                rgba(255,255,255,0.15);
-
-            text-align:center;
-
-            opacity:0.6;
-            font-size:13px;
-        ">
-            Press TAB to return to the match
+            <div style="
+                margin-top:22px;
+                padding-top:17px;
+                border-top:1px solid rgba(255,255,255,0.12);
+                text-align:center;
+                font-size:13px;
+                opacity:0.62;
+                line-height:1.6;
+            ">
+                TAB — Return to Match<br>
+                ESC — Cancel a Rebind<br>
+                Ctrl+Tab / Ctrl+Shift+Tab / Alt+Tab remain available
+            </div>
         </div>
     `;
+
+    const buttons =
+        menu.querySelectorAll(
+            ".boostball-control-button"
+        );
+
+    for (
+        const button of buttons
+    ) {
+
+        if (
+            button.disabled
+        ) {
+
+            continue;
+        }
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                rebindingAction =
+                    button.dataset.action;
+
+                controlNotice =
+                    `Waiting for ${readableAction(rebindingAction)}... ESC cancels.`;
+
+                clearHeldInputs();
+
+                updateMenu();
+            }
+        );
+    }
+
+    const resetButton =
+        document.getElementById(
+            "resetControlsButton"
+        );
+
+    if (
+        resetButton
+    ) {
+
+        resetButton.addEventListener(
+            "click",
+            () => {
+
+                resetControls();
+
+                rebindingAction =
+                    null;
+
+                controlNotice =
+                    "Controls reset to defaults.";
+
+                clearHeldInputs();
+
+                updateMenu();
+            }
+        );
+    }
 }
 
 // ============================================================
@@ -1787,8 +2162,12 @@ function updateMenu() {
 
 function jump() {
 
-    if (!grounded)
+    if (
+        !grounded
+    ) {
+
         return;
+    }
 
     grounded = false;
 
@@ -1796,7 +2175,7 @@ function jump() {
 }
 
 // ============================================================
-// RESET KICKOFF
+// RESET
 // ============================================================
 
 function resetKickoff() {
@@ -1841,44 +2220,76 @@ function resetKickoff() {
 
     goalPause = false;
     goalPauseTimer = 0;
-
     goalText = "";
 }
+// ============================================================
+// BOOSTBALL v0.4.2 — CONTROL FREAK
+// PART 2 / 2
+// Paste directly underneath Part 1
+// ============================================================
 
 // ============================================================
-// NEW MATCH
+// REUSABLE PHYSICS VECTORS
+// ============================================================
+
+const tempA = new THREE.Vector3();
+const tempB = new THREE.Vector3();
+const tempC = new THREE.Vector3();
+const tempD = new THREE.Vector3();
+
+const tempForward = new THREE.Vector3();
+const tempRight = new THREE.Vector3();
+
+// ============================================================
+// MATCH STATE
+// ============================================================
+
+let overtime = false;
+
+let matchEnded = false;
+
+let matchResult = "";
+
+// ============================================================
+// START NEW MATCH
 // ============================================================
 
 function startNewMatch() {
 
     blueScore = 0;
+
     orangeScore = 0;
 
     gameTime = 300;
 
     overtime = false;
+
     matchEnded = false;
 
     matchResult = "";
 
-    resetKickoff();
+    goalPause = false;
 
-    previousScore = "";
-    previousTimer = "";
-    previousMessage = "";
-    previousHint = "";
+    goalPauseTimer = 0;
+
+    goalText = "";
+
+    clearHeldInputs();
+
+    resetKickoff();
 
     updateHUD();
 }
 
 // ============================================================
-// CAR PHYSICS
+// CAR UPDATE
 // ============================================================
 
 function updateCar(dt) {
 
-    // Reuse existing vectors instead of allocating two new
-    // THREE.Vector3 objects every frame.
+    // ========================================================
+    // FORWARD DIRECTION
+    // ========================================================
 
     const forward =
         tempForward.set(
@@ -1902,38 +2313,59 @@ function updateCar(dt) {
             )
         );
 
+    // ========================================================
+    // CURRENT LOCAL VELOCITY
+    // ========================================================
+
     let forwardSpeed =
         carVelocity.dot(
             forward
         );
 
-    const planarSpeed =
+    let sidewaysSpeed =
+        carVelocity.dot(
+            right
+        );
+
+    const horizontalSpeed =
         Math.hypot(
             carVelocity.x,
             carVelocity.z
         );
 
-    const throttle =
-        keys[
+    // ========================================================
+    // INPUT STATE
+    // ========================================================
+
+    const throttleHeld =
+        !!keys[
             controls.throttle
         ];
 
-    const reverse =
-        keys[
+    const reverseHeld =
+        !!keys[
             controls.reverse
         ];
 
-    const boosting =
-        keys[
-            controls.boost
-        ] &&
-        boostAmount > 0;
+    const leftHeld =
+        !!keys[
+            controls.left
+        ];
 
-    const powersliding =
-        keys[
+    const rightHeld =
+        !!keys[
+            controls.right
+        ];
+
+    const boostHeld =
+        !!keys[
+            controls.boost
+        ];
+
+    const powerslideHeld =
+        !!keys[
             controls.powerslide
-        ] &&
-        grounded;
+        ];
 
     // ========================================================
     // GROUND ENGINE
@@ -1941,14 +2373,30 @@ function updateCar(dt) {
 
     if (grounded) {
 
-        // Forward throttle
+        // ----------------------------------------------------
+        // FORWARD
+        // ----------------------------------------------------
 
-        if (throttle) {
-
-            // Preserve v0.4 inertia behaviour:
-            // don't hard-clamp overspeed.
+        if (
+            throttleHeld &&
+            !reverseHeld
+        ) {
 
             if (
+                forwardSpeed <
+                -1
+            ) {
+
+                // W acts as braking if we're moving backwards.
+
+                carVelocity
+                    .addScaledVector(
+                        forward,
+                        BRAKING *
+                        dt
+                    );
+
+            } else if (
                 forwardSpeed <
                 DRIVE_TOP_SPEED
             ) {
@@ -1957,25 +2405,32 @@ function updateCar(dt) {
                     .addScaledVector(
                         forward,
                         ACCELERATION *
-                            dt
+                        dt
                     );
             }
         }
 
-        // Brake / reverse
+        // ----------------------------------------------------
+        // REVERSE / BRAKE
+        // ----------------------------------------------------
 
-        if (reverse) {
+        if (
+            reverseHeld &&
+            !throttleHeld
+        ) {
 
             if (
                 forwardSpeed >
-                1.5
+                1
             ) {
+
+                // S brakes first.
 
                 carVelocity
                     .addScaledVector(
                         forward,
                         -BRAKING *
-                            dt
+                        dt
                     );
 
             } else if (
@@ -1987,74 +2442,152 @@ function updateCar(dt) {
                     .addScaledVector(
                         forward,
                         -REVERSE_ACCELERATION *
-                            dt
+                        dt
                     );
             }
         }
 
         // ====================================================
-        // TYRE GRIP
+        // STEERING
         // ====================================================
 
-        const sidewaysSpeed =
-            carVelocity.dot(
-                right
+        const steeringInput =
+            (
+                leftHeld
+                    ? 1
+                    : 0
+            ) -
+            (
+                rightHeld
+                    ? 1
+                    : 0
             );
 
+        if (
+            steeringInput !== 0
+        ) {
+
+            const speedRatio =
+                THREE.MathUtils.clamp(
+                    horizontalSpeed /
+                    DRIVE_TOP_SPEED,
+                    0,
+                    1
+                );
+
+            let steerRate =
+                THREE.MathUtils.lerp(
+                    LOW_SPEED_STEER,
+                    HIGH_SPEED_STEER,
+                    speedRatio
+                );
+
+            if (
+                powerslideHeld
+            ) {
+
+                steerRate *=
+                    POWERSLIDE_STEER_MULTIPLIER;
+            }
+
+            // Reverse steering direction while travelling
+            // backwards so the controls feel car-like.
+
+            const directionMultiplier =
+                forwardSpeed < -0.5
+                    ? -1
+                    : 1;
+
+            carRotation +=
+                steeringInput *
+                steerRate *
+                directionMultiplier *
+                dt;
+        }
+
+        // ====================================================
+        // GRIP
+        // ====================================================
+
         const grip =
-            powersliding
+            powerslideHeld
                 ? POWERSLIDE_GRIP
                 : NORMAL_GRIP;
 
-        const gripAmount =
-            1 -
+        const sidewaysDecay =
             Math.exp(
                 -grip *
                 dt
             );
 
+        sidewaysSpeed *=
+            sidewaysDecay;
+
+        forwardSpeed =
+            carVelocity.dot(
+                forward
+            );
+
         carVelocity
+            .copy(
+                forward
+            )
+            .multiplyScalar(
+                forwardSpeed
+            )
             .addScaledVector(
                 right,
-                -sidewaysSpeed *
-                    gripAmount
+                sidewaysSpeed
             );
 
         // ====================================================
-        // GROUND DRAG
+        // DRAG
         // ====================================================
 
-        const coasting =
-            !throttle &&
-            !reverse &&
-            !boosting;
+        const powered =
+            throttleHeld ||
+            reverseHeld ||
+            boostHeld;
 
         const drag =
-            coasting
-                ? COAST_DRAG
-                : POWERED_DRAG;
+            powered
+                ? POWERED_DRAG
+                : COAST_DRAG;
 
-        const dragFactor =
+        const dragMultiplier =
             Math.exp(
                 -drag *
                 dt
             );
 
         carVelocity.x *=
-            dragFactor;
+            dragMultiplier;
 
         carVelocity.z *=
-            dragFactor;
+            dragMultiplier;
     }
 
     // ========================================================
     // BOOST
     // ========================================================
 
-    if (boosting) {
+    // Boost works in the air too.
+    //
+    // v0.4.2 still uses the car's horizontal heading.
+    // Full pitch/yaw/roll aerial control comes in v0.5.
+
+    if (
+        boostHeld &&
+        boostAmount > 0
+    ) {
+
+        const speedAlongForward =
+            carVelocity.dot(
+                forward
+            );
 
         if (
-            planarSpeed <
+            speedAlongForward <
             BOOST_TOP_SPEED
         ) {
 
@@ -2062,7 +2595,7 @@ function updateCar(dt) {
                 .addScaledVector(
                     forward,
                     BOOST_ACCELERATION *
-                        dt
+                    dt
                 );
         }
 
@@ -2070,108 +2603,48 @@ function updateCar(dt) {
             BOOST_USAGE *
             dt;
 
-        boostAmount =
-            Math.max(
-                0,
-                boostAmount
-            );
-    }
-
-    // ========================================================
-    // STEERING
-    // ========================================================
-
-    let steering = 0;
-
-    if (
-        keys[
-            controls.left
-        ]
-    ) {
-
-        steering += 1;
-    }
-
-    if (
-        keys[
-            controls.right
-        ]
-    ) {
-
-        steering -= 1;
-    }
-
-    if (grounded) {
-
         if (
-            planarSpeed >
-            0.3
+            boostAmount < 0
         ) {
 
-            const speedFactor =
-                THREE.MathUtils.clamp(
-                    planarSpeed /
-                        DRIVE_TOP_SPEED,
-                    0,
-                    1
-                );
-
-            let steeringRate =
-                THREE.MathUtils.lerp(
-                    LOW_SPEED_STEER,
-                    HIGH_SPEED_STEER,
-                    speedFactor
-                );
-
-            if (powersliding) {
-
-                steeringRate *=
-                    POWERSLIDE_STEER_MULTIPLIER;
-            }
-
-            const direction =
-                forwardSpeed >= 0
-                    ? 1
-                    : -1;
-
-            carRotation +=
-                steering *
-                steeringRate *
-                direction *
-                dt;
+            boostAmount = 0;
         }
+    }
 
-    } else {
+    // ========================================================
+    // VERTICAL PHYSICS
+    // ========================================================
 
-        // v0.4 behaviour preserved:
-        // W/S does NOT change horizontal momentum in the air.
+    if (
+        !grounded
+    ) {
 
         verticalVelocity -=
             GRAVITY *
             dt;
-    }
 
-    // ========================================================
-    // VERTICAL MOVEMENT
-    // ========================================================
+        car.position.y +=
+            verticalVelocity *
+            dt;
 
-    car.position.y +=
-        verticalVelocity *
-        dt;
+        if (
+            car.position.y <= 0
+        ) {
 
-    if (
-        car.position.y <= 0
-    ) {
+            car.position.y = 0;
+
+            verticalVelocity = 0;
+
+            grounded = true;
+        }
+
+    } else {
 
         car.position.y = 0;
-
-        verticalVelocity = 0;
-
-        grounded = true;
     }
 
     // ========================================================
-    // HORIZONTAL MOVEMENT
+    // MOVE CAR
     // ========================================================
 
     car.position.x +=
@@ -2182,45 +2655,41 @@ function updateCar(dt) {
         carVelocity.z *
         dt;
 
+    // ========================================================
+    // APPLY ROTATION
+    // ========================================================
+
     car.rotation.y =
         carRotation;
 
-    collideCarWithArena();
-
     // ========================================================
-    // WHEELS
+    // WHEEL SPIN
     // ========================================================
 
-    forwardSpeed =
+    const wheelForwardSpeed =
         carVelocity.dot(
             forward
         );
 
-    const spin =
-        forwardSpeed *
-        dt /
-        0.55;
+    const wheelSpin =
+        wheelForwardSpeed *
+        dt *
+        1.7;
 
     for (
         const wheel of wheels
     ) {
 
         wheel.rotation.z -=
-            spin;
+            wheelSpin;
     }
-}
 
-// ============================================================
-// END OF PART 1
-//
-// PASTE PART 2 DIRECTLY BELOW THIS LINE.
-// DO NOT ADD ANOTHER import STATEMENT.
-// ============================================================
-// ============================================================
-// BOOSTBALL v0.4.1 — MINI BEAST
-// PART 2
-// Paste directly underneath Part 1
-// ============================================================
+    // ========================================================
+    // ARENA COLLISION
+    // ========================================================
+
+    collideCarWithArena();
+}
 
 // ============================================================
 // CAR / ARENA COLLISION
@@ -2230,34 +2699,42 @@ function collideCarWithArena() {
 
     const RADIUS = 2.1;
 
-    // Side walls
+    // ========================================================
+    // SIDE WALLS
+    // ========================================================
 
     if (
         car.position.z >
-        HALF_WIDTH - RADIUS
+        HALF_WIDTH -
+        RADIUS
     ) {
 
         car.position.z =
-            HALF_WIDTH - RADIUS;
+            HALF_WIDTH -
+            RADIUS;
 
         carVelocity.z =
             -Math.abs(
                 carVelocity.z
-            ) * 0.28;
+            ) *
+            0.28;
     }
 
     if (
         car.position.z <
-        -HALF_WIDTH + RADIUS
+        -HALF_WIDTH +
+        RADIUS
     ) {
 
         car.position.z =
-            -HALF_WIDTH + RADIUS;
+            -HALF_WIDTH +
+            RADIUS;
 
         carVelocity.z =
             Math.abs(
                 carVelocity.z
-            ) * 0.28;
+            ) *
+            0.28;
     }
 
     const insideGoal =
@@ -2271,34 +2748,42 @@ function collideCarWithArena() {
     // NORMAL END WALLS
     // ========================================================
 
-    if (!insideGoal) {
+    if (
+        !insideGoal
+    ) {
 
         if (
             car.position.x >
-            HALF_LENGTH - RADIUS
+            HALF_LENGTH -
+            RADIUS
         ) {
 
             car.position.x =
-                HALF_LENGTH - RADIUS;
+                HALF_LENGTH -
+                RADIUS;
 
             carVelocity.x =
                 -Math.abs(
                     carVelocity.x
-                ) * 0.28;
+                ) *
+                0.28;
         }
 
         if (
             car.position.x <
-            -HALF_LENGTH + RADIUS
+            -HALF_LENGTH +
+            RADIUS
         ) {
 
             car.position.x =
-                -HALF_LENGTH + RADIUS;
+                -HALF_LENGTH +
+                RADIUS;
 
             carVelocity.x =
                 Math.abs(
                     carVelocity.x
-                ) * 0.28;
+                ) *
+                0.28;
         }
     }
 
@@ -2309,7 +2794,8 @@ function collideCarWithArena() {
     if (
         insideGoal &&
         car.position.x >
-        HALF_LENGTH - RADIUS
+        HALF_LENGTH -
+        RADIUS
     ) {
 
         const sideLimit =
@@ -2327,7 +2813,8 @@ function collideCarWithArena() {
             carVelocity.z =
                 -Math.abs(
                     carVelocity.z
-                ) * 0.25;
+                ) *
+                0.25;
         }
 
         if (
@@ -2341,7 +2828,8 @@ function collideCarWithArena() {
             carVelocity.z =
                 Math.abs(
                     carVelocity.z
-                ) * 0.25;
+                ) *
+                0.25;
         }
 
         const back =
@@ -2360,7 +2848,8 @@ function collideCarWithArena() {
             carVelocity.x =
                 -Math.abs(
                     carVelocity.x
-                ) * 0.25;
+                ) *
+                0.25;
         }
     }
 
@@ -2371,7 +2860,8 @@ function collideCarWithArena() {
     if (
         insideGoal &&
         car.position.x <
-        -HALF_LENGTH + RADIUS
+        -HALF_LENGTH +
+        RADIUS
     ) {
 
         const sideLimit =
@@ -2389,7 +2879,8 @@ function collideCarWithArena() {
             carVelocity.z =
                 -Math.abs(
                     carVelocity.z
-                ) * 0.25;
+                ) *
+                0.25;
         }
 
         if (
@@ -2403,7 +2894,8 @@ function collideCarWithArena() {
             carVelocity.z =
                 Math.abs(
                     carVelocity.z
-                ) * 0.25;
+                ) *
+                0.25;
         }
 
         const back =
@@ -2422,7 +2914,8 @@ function collideCarWithArena() {
             carVelocity.x =
                 Math.abs(
                     carVelocity.x
-                ) * 0.25;
+                ) *
+                0.25;
         }
     }
 }
@@ -2434,7 +2927,8 @@ function collideCarWithArena() {
 function updateBall(dt) {
 
     ballVelocity.y -=
-        21 * dt;
+        21 *
+        dt;
 
     ball.position
         .addScaledVector(
@@ -2459,7 +2953,8 @@ function updateBall(dt) {
         if (
             Math.abs(
                 ballVelocity.y
-            ) < 2.4
+            ) <
+            2.4
         ) {
 
             ballVelocity.y = 0;
@@ -2470,11 +2965,12 @@ function updateBall(dt) {
                 -0.52;
         }
 
-        // Rolling friction
+        // Rolling friction.
 
         const groundFriction =
             Math.exp(
-                -0.22 * dt
+                -0.22 *
+                dt
             );
 
         ballVelocity.x *=
@@ -2501,7 +2997,8 @@ function updateBall(dt) {
         ballVelocity.z =
             -Math.abs(
                 ballVelocity.z
-            ) * 0.68;
+            ) *
+            0.68;
     }
 
     if (
@@ -2517,12 +3014,15 @@ function updateBall(dt) {
         ballVelocity.z =
             Math.abs(
                 ballVelocity.z
-            ) * 0.68;
+            ) *
+            0.68;
     }
 
     collideBallWithEnds();
 
-    // Cheap visual rotation.
+    // ========================================================
+    // VISUAL BALL ROTATION
+    // ========================================================
 
     ball.rotation.z -=
         ballVelocity.x *
@@ -2546,12 +3046,14 @@ function collideBallWithEnds() {
             ball.position.z
         ) <
         GOAL_WIDTH / 2 -
-        BALL_RADIUS * 0.3;
+        BALL_RADIUS *
+        0.3;
 
     const belowGoal =
         ball.position.y <
         GOAL_HEIGHT -
-        BALL_RADIUS * 0.2;
+        BALL_RADIUS *
+        0.2;
 
     // ========================================================
     // ORANGE SIDE
@@ -2573,7 +3075,8 @@ function collideBallWithEnds() {
             if (
                 ball.position.x >
                 HALF_LENGTH +
-                BALL_RADIUS * 0.35
+                BALL_RADIUS *
+                0.35
             ) {
 
                 scoreGoal(
@@ -2583,7 +3086,7 @@ function collideBallWithEnds() {
                 return;
             }
 
-            // Back wall
+            // Back wall.
 
             const back =
                 HALF_LENGTH +
@@ -2601,10 +3104,11 @@ function collideBallWithEnds() {
                 ballVelocity.x =
                     -Math.abs(
                         ballVelocity.x
-                    ) * 0.5;
+                    ) *
+                    0.5;
             }
 
-            // Goal side walls
+            // Goal side walls.
 
             const side =
                 GOAL_WIDTH / 2 -
@@ -2621,7 +3125,8 @@ function collideBallWithEnds() {
                 ballVelocity.z =
                     -Math.abs(
                         ballVelocity.z
-                    ) * 0.5;
+                    ) *
+                    0.5;
             }
 
             if (
@@ -2635,12 +3140,13 @@ function collideBallWithEnds() {
                 ballVelocity.z =
                     Math.abs(
                         ballVelocity.z
-                    ) * 0.5;
+                    ) *
+                    0.5;
             }
 
         } else {
 
-            // End wall bounce
+            // End wall bounce.
 
             ball.position.x =
                 HALF_LENGTH -
@@ -2649,7 +3155,8 @@ function collideBallWithEnds() {
             ballVelocity.x =
                 -Math.abs(
                     ballVelocity.x
-                ) * 0.68;
+                ) *
+                0.68;
         }
     }
 
@@ -2673,7 +3180,8 @@ function collideBallWithEnds() {
             if (
                 ball.position.x <
                 -HALF_LENGTH -
-                BALL_RADIUS * 0.35
+                BALL_RADIUS *
+                0.35
             ) {
 
                 scoreGoal(
@@ -2683,7 +3191,7 @@ function collideBallWithEnds() {
                 return;
             }
 
-            // Back wall
+            // Back wall.
 
             const back =
                 -HALF_LENGTH -
@@ -2701,10 +3209,11 @@ function collideBallWithEnds() {
                 ballVelocity.x =
                     Math.abs(
                         ballVelocity.x
-                    ) * 0.5;
+                    ) *
+                    0.5;
             }
 
-            // Goal side walls
+            // Goal side walls.
 
             const side =
                 GOAL_WIDTH / 2 -
@@ -2721,7 +3230,8 @@ function collideBallWithEnds() {
                 ballVelocity.z =
                     -Math.abs(
                         ballVelocity.z
-                    ) * 0.5;
+                    ) *
+                    0.5;
             }
 
             if (
@@ -2735,12 +3245,13 @@ function collideBallWithEnds() {
                 ballVelocity.z =
                     Math.abs(
                         ballVelocity.z
-                    ) * 0.5;
+                    ) *
+                    0.5;
             }
 
         } else {
 
-            // End wall bounce
+            // End wall bounce.
 
             ball.position.x =
                 -HALF_LENGTH +
@@ -2749,7 +3260,8 @@ function collideBallWithEnds() {
             ballVelocity.x =
                 Math.abs(
                     ballVelocity.x
-                ) * 0.68;
+                ) *
+                0.68;
         }
     }
 }
@@ -2760,13 +3272,11 @@ function collideBallWithEnds() {
 
 function updateCarBallCollision() {
 
-    // v0.4 created several Vector3s here every frame.
-    // Reuse scratch vectors instead.
-
     const carCentre =
         tempA.set(
             car.position.x,
-            car.position.y + 1.1,
+            car.position.y +
+            1.1,
             car.position.z
         );
 
@@ -2792,9 +3302,9 @@ function updateCarBallCollision() {
 
     if (
         distanceSq <
-            collisionDistanceSq &&
+        collisionDistanceSq &&
         distanceSq >
-            0.000001
+        0.000001
     ) {
 
         const distance =
@@ -2804,10 +3314,11 @@ function updateCarBallCollision() {
 
         const normal =
             delta.multiplyScalar(
-                1 / distance
+                1 /
+                distance
             );
 
-        // Push ball outside car.
+        // Push ball outside the car.
 
         ball.position
             .copy(
@@ -2843,13 +3354,15 @@ function updateCarBallCollision() {
                 0.32
             );
 
-        if (!grounded) {
+        if (
+            !grounded
+        ) {
 
             ballVelocity.y +=
                 Math.max(
                     1.5,
                     verticalVelocity *
-                        0.55
+                    0.55
                 );
         }
 
@@ -2870,9 +3383,13 @@ function updateBoostPads(dt) {
         const pad of boostPads
     ) {
 
-        // Respawn countdown
+        // ====================================================
+        // RESPAWN COUNTDOWN
+        // ====================================================
 
-        if (!pad.active) {
+        if (
+            !pad.active
+        ) {
 
             pad.timer -=
                 dt;
@@ -2891,8 +3408,7 @@ function updateBoostPads(dt) {
             continue;
         }
 
-        // v0.4 rotated on two axes.
-        // One is enough to look alive.
+        // Cheap animation.
 
         pad.orb.rotation.y +=
             dt *
@@ -2906,26 +3422,26 @@ function updateBoostPads(dt) {
             car.position.z -
             pad.z;
 
-        // Squared distance avoids Math.hypot/sqrt.
-
         const distanceSq =
-            dx * dx +
-            dz * dz;
+            dx *
+            dx +
+            dz *
+            dz;
 
         if (
             distanceSq <
-                pad.pickupRadiusSq &&
+            pad.pickupRadiusSq &&
             car.position.y <
-                2.5
+            2.5
         ) {
 
-            if (pad.big) {
+            if (
+                pad.big
+            ) {
 
-                boostAmount =
-                    100;
+                boostAmount = 100;
 
-                pad.timer =
-                    10;
+                pad.timer = 10;
 
             } else {
 
@@ -2933,18 +3449,17 @@ function updateBoostPads(dt) {
                     Math.min(
                         100,
                         boostAmount +
-                            12
+                        12
                     );
 
-                pad.timer =
-                    4;
+                pad.timer = 4;
             }
 
             pad.active =
                 false;
 
-            // Permanent floor decal stays.
-            // Only floating pickup vanishes.
+            // Floor decal stays visible.
+            // Floating pickup disappears.
 
             pad.pickup.visible =
                 false;
@@ -2965,8 +3480,6 @@ function scoreGoal(team) {
 
         return;
     }
-
-    // Update score first.
 
     if (
         team === "blue"
@@ -2993,7 +3506,9 @@ function scoreGoal(team) {
     // OVERTIME = GOLDEN GOAL
     // ========================================================
 
-    if (overtime) {
+    if (
+        overtime
+    ) {
 
         finishMatch(
             team
@@ -3002,13 +3517,21 @@ function scoreGoal(team) {
         return;
     }
 
-    // Normal goal pause.
+    // ========================================================
+    // NORMAL GOAL PAUSE
+    // ========================================================
 
     goalPause = true;
 
     goalPauseTimer = 2;
 
     carVelocity.set(
+        0,
+        0,
+        0
+    );
+
+    ballVelocity.set(
         0,
         0,
         0
@@ -3059,7 +3582,8 @@ function updateTimer(dt) {
         return;
     }
 
-    gameTime -= dt;
+    gameTime -=
+        dt;
 
     if (
         gameTime <= 0
@@ -3122,8 +3646,6 @@ function resolveEndOfRegulation() {
     goalText =
         "OVERTIME!";
 
-    // Freeze things during the transition.
-
     carVelocity.set(
         0,
         0,
@@ -3169,8 +3691,6 @@ function finishMatch(team) {
     goalText =
         matchResult;
 
-    // Stop the entire battlefield.
-
     carVelocity.set(
         0,
         0,
@@ -3185,16 +3705,7 @@ function finishMatch(team) {
 
     verticalVelocity = 0;
 
-    // Clear held controls so car doesn't launch
-    // immediately when a new match begins.
-
-    for (
-        const key in keys
-    ) {
-
-        keys[key] =
-            false;
-    }
+    clearHeldInputs();
 
     updateHUD();
 }
@@ -3219,8 +3730,6 @@ function updateCamera(dt) {
             )
         );
 
-    // Use scratch vectors instead of clone() chains.
-
     const desiredPosition =
         tempC;
 
@@ -3231,7 +3740,9 @@ function updateCamera(dt) {
     // BALL CAM
     // ========================================================
 
-    if (ballCam) {
+    if (
+        ballCam
+    ) {
 
         const toBall =
             tempA
@@ -3261,14 +3772,11 @@ function updateCamera(dt) {
             toBall.normalize();
         }
 
-        // Adaptive camera distance.
-        // Same basic behaviour as v0.4.
-
         const cameraDistance =
             THREE.MathUtils.clamp(
                 11.5 +
                 ballDistance *
-                    0.018,
+                0.018,
                 11.5,
                 14
             );
@@ -3285,20 +3793,14 @@ function updateCamera(dt) {
         desiredPosition.y +=
             6.4;
 
-        // Start looking at ball.
-
         desiredTarget.copy(
             ball.position
         );
 
-        // Blend 13% toward car centre.
-        //
-        // Equivalent idea to v0.4, but without creating
-        // several temporary Vector3s.
-
         tempB.set(
             car.position.x,
-            car.position.y + 1.2,
+            car.position.y +
+            1.2,
             car.position.z
         );
 
@@ -3414,7 +3916,7 @@ function updateHUD() {
     }
 
     // ========================================================
-    // CAMERA MODE
+    // CAMERA
     // ========================================================
 
     const cameraText =
@@ -3440,12 +3942,16 @@ function updateHUD() {
 
     let timerText;
 
-    if (matchEnded) {
+    if (
+        matchEnded
+    ) {
 
         timerText =
             "FINAL";
 
-    } else if (overtime) {
+    } else if (
+        overtime
+    ) {
 
         timerText =
             "OVERTIME";
@@ -3491,7 +3997,9 @@ function updateHUD() {
 
     let message = "";
 
-    if (matchEnded) {
+    if (
+        matchEnded
+    ) {
 
         message =
             matchResult;
@@ -3506,36 +4014,46 @@ function updateHUD() {
 
     if (
         message !==
-        previousMessage
+        previousGoalMessage
     ) {
 
         goalMessageElement.textContent =
             message;
 
-        previousMessage =
+        previousGoalMessage =
             message;
     }
+}
 
-    // ========================================================
-    // BOTTOM HINT
-    // ========================================================
+// ============================================================
+// R KEY MATCH BEHAVIOUR
+// ============================================================
 
-    const hintText =
-        matchEnded
-            ? "R — New Match   •   TAB — Menu"
-            : "TAB — Menu";
+// Part 1 already detects the reset binding.
+//
+// Replace the normal kickoff reset with a complete new match
+// after the final whistle by watching the reset key state here.
+
+let resetWasHeld = false;
+
+function updateMatchReset() {
+
+    const resetHeld =
+        !!keys[
+            controls.reset
+        ];
 
     if (
-        hintText !==
-        previousHint
+        matchEnded &&
+        resetHeld &&
+        !resetWasHeld
     ) {
 
-        matchHintElement.textContent =
-            hintText;
-
-        previousHint =
-            hintText;
+        startNewMatch();
     }
+
+    resetWasHeld =
+        resetHeld;
 }
 
 // ============================================================
@@ -3553,12 +4071,10 @@ window.addEventListener(
         camera
             .updateProjectionMatrix();
 
-        // Preserve v0.4.1 render scale.
-
         renderer.setPixelRatio(
             Math.min(
                 window.devicePixelRatio,
-                QUALITY.pixelRatio
+                1
             )
         );
 
@@ -3570,20 +4086,78 @@ window.addEventListener(
 );
 
 // ============================================================
-// PERFORMANCE LOOP
+// PERFORMANCE
 // ============================================================
 
-// v0.4 ran the game at whatever refresh rate the browser
-// requested.
-//
-// On a 120/144Hz display that meant substantially more JS,
-// collision work and rendering than we currently need.
+const FPS_LIMIT = 60;
 
 const TARGET_FRAME_MS =
     1000 /
-    QUALITY.fpsLimit;
+    FPS_LIMIT;
 
 let previousRenderTime = 0;
+
+let lastTime =
+    performance.now();
+
+// ============================================================
+// FPS COUNTER
+// ============================================================
+
+const fpsElement =
+    document.createElement(
+        "div"
+    );
+
+fpsElement.style.cssText = `
+    position:absolute;
+    top:12px;
+    right:14px;
+    z-index:20;
+    color:white;
+    font-family:monospace;
+    font-size:12px;
+    opacity:0.55;
+    pointer-events:none;
+`;
+
+fpsElement.textContent =
+    "FPS: --";
+
+document.body.appendChild(
+    fpsElement
+);
+
+let fpsAccumulator = 0;
+
+let fpsFrames = 0;
+
+function updateFPS(dt) {
+
+    fpsAccumulator +=
+        dt;
+
+    fpsFrames++;
+
+    if (
+        fpsAccumulator >=
+        0.5
+    ) {
+
+        const fps =
+            Math.round(
+                fpsFrames /
+                fpsAccumulator
+            );
+
+        fpsElement.textContent =
+            `FPS: ${fps}`;
+
+        fpsAccumulator = 0;
+
+        fpsFrames = 0;
+    }
+}
 
 // ============================================================
 // MAIN LOOP
@@ -3596,7 +4170,7 @@ function animate(time) {
     );
 
     // ========================================================
-    // 60 FPS CAP
+    // 60 FPS LIMIT
     // ========================================================
 
     const elapsedSinceRender =
@@ -3632,17 +4206,28 @@ function animate(time) {
             0.033
         );
 
-    lastTime = time;
+    lastTime =
+        time;
+
+    // ========================================================
+    // MATCH RESET WATCHER
+    // ========================================================
+
+    updateMatchReset();
 
     // ========================================================
     // SIMULATION
     // ========================================================
 
-    if (!menuOpen) {
+    if (
+        !menuOpen
+    ) {
 
-        if (matchEnded) {
+        if (
+            matchEnded
+        ) {
 
-            // Match is frozen, but keep camera/HUD alive.
+            // Match frozen, but camera remains alive.
 
             updateCamera(
                 dt
@@ -3718,41 +4303,42 @@ cameraTarget.copy(
 
 updateHUD();
 
+updateMenu();
+
 requestAnimationFrame(
     animate
 );
 
 // ============================================================
-// BOOSTBALL v0.4.1 — MINI BEAST
+// BOOSTBALL v0.4.2 — CONTROL FREAK
+//
+// CONTROLS:
+// ✓ Click controls in TAB menu to rebind
+// ✓ Bindings saved in localStorage
+// ✓ Duplicate bindings rejected
+// ✓ ESC cancels rebinding
+// ✓ Reset-to-defaults button
+// ✓ TAB remains the menu key
+// ✓ Ctrl+Tab / Ctrl+Shift+Tab / Alt+Tab are not intercepted
+// ✓ Held inputs clear when browser loses focus
 //
 // PERFORMANCE:
-// ✓ 60 FPS cap
+// ✓ 60 FPS target
 // ✓ 1x render scale
 // ✓ 1024 shadow map
-// ✓ tighter shadow volume
 // ✓ reusable Vector3 scratch objects
 // ✓ shared wheel geometry
-// ✓ shared boost geometry/materials
-// ✓ cheaper boost distance checks
-// ✓ fewer ball polygons
-// ✓ cached HUD DOM references
-// ✓ HUD only updates changed text
-// ✓ cheaper boost animation
-// ✓ FPS counter
+// ✓ shared boost geometry
+// ✓ squared boost-pad distance checks
+// ✓ reduced ball geometry
+// ✓ cached HUD elements
 //
-// QUALITY:
-// ✓ improved field material
-// ✓ subtle field stripes
-// ✓ cleaner transparency
-// ✓ adjusted lighting/fog
-//
-// MATCH FLOW:
-// ✓ 5 minute regulation
+// MATCH:
+// ✓ 5-minute regulation
 // ✓ score comparison at 0:00
 // ✓ tied game enters overtime
-// ✓ overtime is golden goal
-// ✓ winner freezes match
-// ✓ R starts new match
+// ✓ overtime golden goal
+// ✓ winner freezes the match
 //
 // NEXT:
 // v0.5 — THE MICROWAVE LEARNS TO FLY
