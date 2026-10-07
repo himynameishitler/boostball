@@ -25,8 +25,8 @@ import * as THREE from
 // VERSION
 // ============================================================
 
-const GAME_VERSION = "v0.6.5";
-const GAME_CODENAME = "TRACTION CONTROL";
+const GAME_VERSION = "v0.6.6";
+const GAME_CODENAME = "ARENA SHELL";
 
 
 // ============================================================
@@ -275,7 +275,9 @@ const HALF_WIDTH =
     FIELD_WIDTH / 2;
 
 
-const WALL_HEIGHT = 16;
+const WALL_HEIGHT = 44;
+
+const CEILING_HEIGHT = 48;
 
 
 const GOAL_WIDTH = 31;
@@ -1230,11 +1232,11 @@ function applyGraphicsPreset() {
 // NOT the car's intended straight-line speed.
 // ============================================================
 
-const ACCELERATION = 29;
+const ACCELERATION = 24;
 
 const REVERSE_ACCELERATION = 18;
 
-const BRAKING = 34;
+const BRAKING = 54;
 
 
 const DRIVE_TOP_SPEED = 34;
@@ -4196,6 +4198,7 @@ function clearControllerGameplayState() {
 
     controllerState.reset =
         false;
+
 
 
     controllerState.resetPressed =
@@ -12596,6 +12599,7 @@ requestAnimationFrame(
 // - ball curved-wall interaction
 // - wall adhesion foundation
 // - jump-off-wall behaviour
+
 // - improved jump tap/hold
 // - goal darkness
 // - goal explosion
@@ -13089,8 +13093,74 @@ const v064CurveMaterial =
             0.92,
 
         metalness:
-            0.0
+            0.0,
+
+        side:
+            THREE.DoubleSide
     });
+
+
+function v066BuildRibbonGeometry(
+    rows
+) {
+
+    const positions = [];
+    const indices = [];
+
+    for (
+        let i = 0;
+        i < rows.length;
+        i++
+    ) {
+
+        const row = rows[i];
+
+        positions.push(
+            row.a.x,
+            row.a.y,
+            row.a.z,
+            row.b.x,
+            row.b.y,
+            row.b.z
+        );
+
+        if (
+            i < rows.length - 1
+        ) {
+
+            const base =
+                i * 2;
+
+            indices.push(
+                base,
+                base + 2,
+                base + 1,
+                base + 1,
+                base + 2,
+                base + 3
+            );
+        }
+    }
+
+    const geometry =
+        new THREE.BufferGeometry();
+
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+            positions,
+            3
+        )
+    );
+
+    geometry.setIndex(
+        indices
+    );
+
+    geometry.computeVertexNormals();
+
+    return geometry;
+}
 
 
 function v064CreateSideCurve(
@@ -13098,147 +13168,68 @@ function v064CreateSideCurve(
 ) {
 
     const segments =
+        32;
+
+    const cornerInset =
         12;
 
+    const rows = [];
 
     for (
         let i = 0;
-        i < segments;
+        i <= segments;
         i++
     ) {
 
-        const t0 =
-            i / segments;
-
-
-        const t1 =
-            (i + 1) /
-            segments;
-
-
-        const a0 =
-            t0 *
-            Math.PI /
-            2;
-
-
-        const a1 =
-            t1 *
-            Math.PI /
-            2;
-
-
-        const amid =
+        const angle =
             (
-                a0 +
-                a1
-            ) / 2;
-
-
-        const z0 =
-            HALF_WIDTH -
-            V064_WALL_CURVE_RADIUS +
-            Math.sin(
-                a0
+                i / segments
             ) *
-            V064_WALL_CURVE_RADIUS;
+            Math.PI / 2;
 
-
-        const z1 =
-            HALF_WIDTH -
-            V064_WALL_CURVE_RADIUS +
-            Math.sin(
-                a1
-            ) *
-            V064_WALL_CURVE_RADIUS;
-
-
-        const y0 =
-            V064_WALL_CURVE_RADIUS -
-            Math.cos(
-                a0
-            ) *
-            V064_WALL_CURVE_RADIUS;
-
-
-        const y1 =
-            V064_WALL_CURVE_RADIUS -
-            Math.cos(
-                a1
-            ) *
-            V064_WALL_CURVE_RADIUS;
-
-
-        const width =
-            Math.sqrt(
-
-                (
-                    z1 -
-                    z0
-                ) *
-                (
-                    z1 -
-                    z0
-                )
-
-                +
-
-                (
-                    y1 -
-                    y0
-                ) *
-                (
-                    y1 -
-                    y0
-                )
-            );
-
-
-        const strip =
-            new THREE.Mesh(
-
-                new THREE.BoxGeometry(
-                    FIELD_LENGTH,
-                    0.20,
-                    width + 0.06
-                ),
-
-                v064CurveMaterial
-            );
-
-
-        strip.position.set(
-
-            0,
-
-            (
-                y0 +
-                y1
-            ) / 2,
-
+        const z =
             side *
             (
-                (
-                    z0 +
-                    z1
-                ) / 2
+                HALF_WIDTH -
+                V064_WALL_CURVE_RADIUS +
+                Math.sin(angle) *
+                V064_WALL_CURVE_RADIUS
+            );
+
+        const y =
+            V064_WALL_CURVE_RADIUS -
+            Math.cos(angle) *
+            V064_WALL_CURVE_RADIUS +
+            0.015;
+
+        rows.push({
+            a: new THREE.Vector3(
+                -HALF_LENGTH + cornerInset,
+                y,
+                z
+            ),
+            b: new THREE.Vector3(
+                HALF_LENGTH - cornerInset,
+                y,
+                z
             )
-        );
-
-
-        strip.rotation.x =
-            side *
-            amid;
-
-
-        strip.receiveShadow =
-            true;
-
-
-        scene.add(
-            strip
-        );
+        });
     }
+
+    const mesh =
+        new THREE.Mesh(
+            v066BuildRibbonGeometry(
+                rows
+            ),
+            v064CurveMaterial
+        );
+
+    mesh.receiveShadow =
+        false;
+
+    scene.add(
+        mesh
+    );
 }
 
 
@@ -13253,7 +13244,7 @@ v064CreateSideCurve(
 
 
 // ============================================================
-// END-WALL CURVED VISUALS
+// END-WALL CURVED SURFACES
 // ============================================================
 
 function v064CreateEndCurve(
@@ -13261,168 +13252,76 @@ function v064CreateEndCurve(
 ) {
 
     const segments =
-        12;
+        32;
 
+    const sidePieceStart =
+        GOAL_WIDTH / 2;
+
+    const sidePieceEnd =
+        HALF_WIDTH - 12;
 
     for (
-        let i = 0;
-        i < segments;
-        i++
+        const zSide
+        of [-1, 1]
     ) {
 
-        const t0 =
-            i / segments;
-
-
-        const t1 =
-            (
-                i +
-                1
-            ) /
-            segments;
-
-
-        const a0 =
-            t0 *
-            Math.PI /
-            2;
-
-
-        const a1 =
-            t1 *
-            Math.PI /
-            2;
-
-
-        const amid =
-            (
-                a0 +
-                a1
-            ) / 2;
-
-
-        const x0 =
-            HALF_LENGTH -
-            V064_WALL_CURVE_RADIUS +
-            Math.sin(
-                a0
-            ) *
-            V064_WALL_CURVE_RADIUS;
-
-
-        const x1 =
-            HALF_LENGTH -
-            V064_WALL_CURVE_RADIUS +
-            Math.sin(
-                a1
-            ) *
-            V064_WALL_CURVE_RADIUS;
-
-
-        const y0 =
-            V064_WALL_CURVE_RADIUS -
-            Math.cos(
-                a0
-            ) *
-            V064_WALL_CURVE_RADIUS;
-
-
-        const y1 =
-            V064_WALL_CURVE_RADIUS -
-            Math.cos(
-                a1
-            ) *
-            V064_WALL_CURVE_RADIUS;
-
-
-        const width =
-            Math.sqrt(
-
-                (
-                    x1 -
-                    x0
-                ) *
-                (
-                    x1 -
-                    x0
-                )
-
-                +
-
-                (
-                    y1 -
-                    y0
-                ) *
-                (
-                    y1 -
-                    y0
-                )
-            );
-
-
-        // Leave the goal opening clear.
-
-        const sidePieceWidth =
-            (
-                FIELD_WIDTH -
-                GOAL_WIDTH
-            ) / 2;
-
+        const rows = [];
 
         for (
-            const zSide
-            of [-1, 1]
+            let i = 0;
+            i <= segments;
+            i++
         ) {
 
-            const strip =
-                new THREE.Mesh(
+            const angle =
+                (
+                    i / segments
+                ) *
+                Math.PI / 2;
 
-                    new THREE.BoxGeometry(
-                        width + 0.06,
-                        0.20,
-                        sidePieceWidth
-                    ),
-
-                    v064CurveMaterial
-                );
-
-
-            strip.position.set(
-
+            const x =
                 side *
                 (
-                    (
-                        x0 +
-                        x1
-                    ) / 2
+                    HALF_LENGTH -
+                    V064_WALL_CURVE_RADIUS +
+                    Math.sin(angle) *
+                    V064_WALL_CURVE_RADIUS
+                );
+
+            const y =
+                V064_WALL_CURVE_RADIUS -
+                Math.cos(angle) *
+                V064_WALL_CURVE_RADIUS +
+                0.015;
+
+            rows.push({
+                a: new THREE.Vector3(
+                    x,
+                    y,
+                    zSide * sidePieceStart
                 ),
-
-                (
-                    y0 +
-                    y1
-                ) / 2,
-
-                zSide *
-                (
-                    GOAL_WIDTH / 2 +
-                    sidePieceWidth / 2
+                b: new THREE.Vector3(
+                    x,
+                    y,
+                    zSide * sidePieceEnd
                 )
-            );
-
-
-            strip.rotation.z =
-                -side *
-                amid;
-
-
-            strip.receiveShadow =
-                true;
-
-
-            scene.add(
-                strip
-            );
+            });
         }
+
+        const mesh =
+            new THREE.Mesh(
+                v066BuildRibbonGeometry(
+                    rows
+                ),
+                v064CurveMaterial
+            );
+
+        mesh.receiveShadow =
+            false;
+
+        scene.add(
+            mesh
+        );
     }
 }
 
@@ -14214,17 +14113,36 @@ function v064UpdateWallDriving(
         0.01
     ) {
 
-        wallSpeed -=
-            REVERSE_ACCELERATION *
-            reverse *
-            dt;
+        // v0.6.6: reverse acts as a strong brake first.
+        // Once the car is nearly stopped it begins reversing.
+        if (
+            wallSpeed >
+            0.5
+        ) {
+
+            wallSpeed =
+                moveToward(
+                    wallSpeed,
+                    0,
+                    BRAKING *
+                        reverse *
+                        dt
+                );
+
+        } else {
+
+            wallSpeed -=
+                REVERSE_ACCELERATION *
+                reverse *
+                dt;
 
 
-        wallSpeed =
-            Math.max(
-                wallSpeed,
-                -REVERSE_TOP_SPEED
-            );
+            wallSpeed =
+                Math.max(
+                    wallSpeed,
+                    -REVERSE_TOP_SPEED
+                );
+        }
     }
 
 
@@ -14265,11 +14183,19 @@ function v064UpdateWallDriving(
         );
 
 
+    const v066WallSteerSide =
+        v064WallMode === "side"
+            ? -v064WallSide
+            : v064WallSide;
+
+
     v064WallHeading +=
 
         inputState.steer *
 
         V064_WALL_STEER_SPEED *
+
+        v066WallSteerSide *
 
         (
             wallSpeed < -0.5
@@ -16095,7 +16021,7 @@ cameraInitialised =
 
 
 console.log(
-    "BOOSTBALL v0.6.5 — MOMENTUM + FREE LOOK loaded."
+    "BOOSTBALL v0.6.6 — ARENA SHELL loaded."
 );
 
 
@@ -16127,3 +16053,654 @@ console.log(
 // 20. THE MICROWAVE DOES NOT ENTER ANOTHER DIMENSION.
 //
 // ============================================================
+
+
+// ============================================================
+// BOOSTBALL v0.6.6 — ARENA SHELL
+// ============================================================
+// Tall enclosure, ceiling collision, rounded wall corners,
+// goal-opening detach, real-time match clock, cleaner field.
+// ============================================================
+
+const V066_CORNER_RADIUS =
+    12;
+
+
+// ------------------------------------------------------------
+// CEILING VISUAL
+// ------------------------------------------------------------
+
+const v066Ceiling =
+    new THREE.Mesh(
+        new THREE.PlaneGeometry(
+            FIELD_LENGTH - 1,
+            FIELD_WIDTH - 1
+        ),
+        new THREE.MeshBasicMaterial({
+            color: 0x7aa9c7,
+            transparent: true,
+            opacity: 0.055,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        })
+    );
+
+v066Ceiling.rotation.x =
+    Math.PI / 2;
+
+v066Ceiling.position.y =
+    CEILING_HEIGHT;
+
+scene.add(
+    v066Ceiling
+);
+
+
+// ------------------------------------------------------------
+// REMOVE THE RANDOM HEAVY FIELD SHADOWS
+// ------------------------------------------------------------
+
+field.receiveShadow =
+    false;
+
+for (
+    const child
+    of scene.children
+) {
+
+    if (
+        child !== car
+        &&
+        child !== ball
+    ) {
+
+        child.receiveShadow =
+            false;
+    }
+}
+
+
+// ------------------------------------------------------------
+// ROUNDED VERTICAL CORNER VISUALS
+// ------------------------------------------------------------
+
+const v066CornerMaterial =
+    new THREE.MeshBasicMaterial({
+        color: 0x80b8dd,
+        transparent: true,
+        opacity: 0.15,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+
+
+function v066CreateRoundedCorner(
+    xSide,
+    zSide
+) {
+
+    const segments =
+        18;
+
+    const positions = [];
+    const indices = [];
+
+    const centreX =
+        xSide *
+        (
+            HALF_LENGTH -
+            V066_CORNER_RADIUS
+        );
+
+    const centreZ =
+        zSide *
+        (
+            HALF_WIDTH -
+            V066_CORNER_RADIUS
+        );
+
+    for (
+        let i = 0;
+        i <= segments;
+        i++
+    ) {
+
+        const t =
+            i / segments;
+
+        const angle =
+            t * Math.PI / 2;
+
+        const x =
+            centreX +
+            xSide *
+            Math.sin(angle) *
+            V066_CORNER_RADIUS;
+
+        const z =
+            centreZ +
+            zSide *
+            Math.cos(angle) *
+            V066_CORNER_RADIUS;
+
+        positions.push(
+            x, 0, z,
+            x, WALL_HEIGHT, z
+        );
+
+        if (
+            i < segments
+        ) {
+
+            const base =
+                i * 2;
+
+            indices.push(
+                base,
+                base + 1,
+                base + 2,
+                base + 1,
+                base + 3,
+                base + 2
+            );
+        }
+    }
+
+    const geometry =
+        new THREE.BufferGeometry();
+
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+            positions,
+            3
+        )
+    );
+
+    geometry.setIndex(
+        indices
+    );
+
+    geometry.computeVertexNormals();
+
+    scene.add(
+        new THREE.Mesh(
+            geometry,
+            v066CornerMaterial
+        )
+    );
+}
+
+
+for (
+    const xSide
+    of [-1, 1]
+) {
+
+    for (
+        const zSide
+        of [-1, 1]
+    ) {
+
+        v066CreateRoundedCorner(
+            xSide,
+            zSide
+        );
+    }
+}
+
+
+// ------------------------------------------------------------
+// CEILING COLLISION — BALL
+// ------------------------------------------------------------
+
+const v065UpdateBall =
+    updateBall;
+
+updateBall =
+function (
+    dt
+) {
+
+    v065UpdateBall(
+        dt
+    );
+
+    const maximumBallY =
+        CEILING_HEIGHT -
+        BALL_RADIUS;
+
+    if (
+        ball.position.y >
+        maximumBallY
+    ) {
+
+        ball.position.y =
+            maximumBallY;
+
+        if (
+            ballVelocity.y > 0
+        ) {
+
+            ballVelocity.y *=
+                -0.72;
+        }
+    }
+};
+
+
+// ------------------------------------------------------------
+// CEILING + ROUNDED CORNER SAFETY — CAR
+// ------------------------------------------------------------
+
+const v065UpdateCar =
+    updateCar;
+
+updateCar =
+function (
+    dt
+) {
+
+    v065UpdateCar(
+        dt
+    );
+
+    const maximumCarY =
+        CEILING_HEIGHT -
+        1.35;
+
+    if (
+        car.position.y >
+        maximumCarY
+    ) {
+
+        car.position.y =
+            maximumCarY;
+
+        if (
+            verticalVelocity > 0
+        ) {
+
+            verticalVelocity *=
+                -0.28;
+        }
+
+        grounded =
+            false;
+
+        groundContact =
+            false;
+    }
+
+
+    // Rounded-rectangle safety shell on the floor / in air.
+    // This prevents the old square-corner escape route.
+    if (
+        !v064WallMode
+    ) {
+
+        const innerX =
+            HALF_LENGTH -
+            V066_CORNER_RADIUS;
+
+        const innerZ =
+            HALF_WIDTH -
+            V066_CORNER_RADIUS;
+
+        const ax =
+            Math.abs(
+                car.position.x
+            );
+
+        const az =
+            Math.abs(
+                car.position.z
+            );
+
+        if (
+            ax > innerX
+            &&
+            az > innerZ
+        ) {
+
+            const dx =
+                ax - innerX;
+
+            const dz =
+                az - innerZ;
+
+            const distance =
+                Math.hypot(
+                    dx,
+                    dz
+                );
+
+            const limit =
+                V066_CORNER_RADIUS -
+                0.55;
+
+            if (
+                distance > limit
+            ) {
+
+                const nx =
+                    dx /
+                    Math.max(
+                        distance,
+                        0.0001
+                    );
+
+                const nz =
+                    dz /
+                    Math.max(
+                        distance,
+                        0.0001
+                    );
+
+                car.position.x =
+                    Math.sign(
+                        car.position.x
+                    ) *
+                    (
+                        innerX +
+                        nx * limit
+                    );
+
+                car.position.z =
+                    Math.sign(
+                        car.position.z
+                    ) *
+                    (
+                        innerZ +
+                        nz * limit
+                    );
+
+                const worldNx =
+                    Math.sign(
+                        car.position.x
+                    ) * nx;
+
+                const worldNz =
+                    Math.sign(
+                        car.position.z
+                    ) * nz;
+
+                const outwardSpeed =
+                    carVelocity.x *
+                    worldNx +
+                    carVelocity.z *
+                    worldNz;
+
+                if (
+                    outwardSpeed > 0
+                ) {
+
+                    carVelocity.x -=
+                        worldNx *
+                        outwardSpeed *
+                        1.12;
+
+                    carVelocity.z -=
+                        worldNz *
+                        outwardSpeed *
+                        1.12;
+                }
+            }
+        }
+    }
+
+
+    // A car attached to an end wall cannot magically drive
+    // across the empty goal mouth. Lose tyre contact there.
+    if (
+        v064WallMode === "end"
+        &&
+        Math.abs(
+            car.position.z
+        ) <
+            GOAL_WIDTH / 2 - 0.8
+        &&
+        car.position.y <
+            GOAL_HEIGHT - 0.7
+    ) {
+
+        v064WallMode =
+            null;
+
+        grounded =
+            false;
+
+        groundContact =
+            false;
+
+        v064WallDetachTimer =
+            0.16;
+    }
+};
+
+
+// ------------------------------------------------------------
+// WALL CORNER TRANSITION
+// ------------------------------------------------------------
+
+const v065WallDriving =
+    v064UpdateWallDriving;
+
+v064UpdateWallDriving =
+function (
+    dt
+) {
+
+    v065WallDriving(
+        dt
+    );
+
+    if (
+        !v064WallMode
+    ) {
+
+        return;
+    }
+
+    const cornerX =
+        HALF_LENGTH -
+        V066_CORNER_RADIUS;
+
+    const cornerZ =
+        HALF_WIDTH -
+        V066_CORNER_RADIUS;
+
+
+    if (
+        v064WallMode === "side"
+        &&
+        Math.abs(
+            car.position.x
+        ) > cornerX
+    ) {
+
+        const newSide =
+            Math.sign(
+                car.position.x
+            ) || 1;
+
+        const oldAlong =
+            carVelocity.x;
+
+        v064WallMode =
+            "end";
+
+        v064WallSide =
+            newSide;
+
+        car.position.x =
+            newSide *
+            (
+                HALF_LENGTH -
+                GROUNDED_CAR_HEIGHT
+            );
+
+        carVelocity.z =
+            -Math.sign(
+                car.position.z
+            ) *
+            Math.abs(
+                oldAlong
+            );
+
+        carVelocity.x =
+            0;
+
+        v064WallHeading =
+            Math.atan2(
+                verticalVelocity,
+                carVelocity.z || 0.001
+            );
+    }
+
+
+    if (
+        v064WallMode === "end"
+        &&
+        Math.abs(
+            car.position.z
+        ) > cornerZ
+    ) {
+
+        const newSide =
+            Math.sign(
+                car.position.z
+            ) || 1;
+
+        const oldAlong =
+            carVelocity.z;
+
+        v064WallMode =
+            "side";
+
+        v064WallSide =
+            newSide;
+
+        car.position.z =
+            newSide *
+            (
+                HALF_WIDTH -
+                GROUNDED_CAR_HEIGHT
+            );
+
+        carVelocity.x =
+            -Math.sign(
+                car.position.x
+            ) *
+            Math.abs(
+                oldAlong
+            );
+
+        carVelocity.z =
+            0;
+
+        v064WallHeading =
+            Math.atan2(
+                verticalVelocity,
+                carVelocity.x || 0.001
+            );
+    }
+};
+
+
+// ------------------------------------------------------------
+// REAL-TIME MATCH CLOCK
+// ------------------------------------------------------------
+
+let v066LastMatchClock =
+    performance.now();
+
+const v065UpdateMatch =
+    updateMatch;
+
+updateMatch =
+function (
+    dt
+) {
+
+    const now =
+        performance.now();
+
+    const realDt =
+        Math.max(
+            0,
+            (
+                now -
+                v066LastMatchClock
+            ) /
+            1000
+        );
+
+    v066LastMatchClock =
+        now;
+
+    if (
+        gameState ===
+        GAME_STATE.PLAYING
+    ) {
+
+        // Feed the real elapsed time to the match clock so
+        // changing tabs does not freeze a live match.
+        v065UpdateMatch(
+            realDt
+        );
+
+        return;
+    }
+
+    // Free Play remains unlimited by default. Other states
+    // continue using frame dt for their short animations.
+    v065UpdateMatch(
+        dt
+    );
+};
+
+
+// ------------------------------------------------------------
+// BOOST HUD — CLEANER 0–100 GAUGE
+// ------------------------------------------------------------
+
+boostHud.style.width =
+    "112px";
+
+boostHud.style.height =
+    "112px";
+
+boostHud.style.border =
+    "4px solid rgba(255,166,46,0.82)";
+
+boostHud.style.background =
+    "conic-gradient(rgba(255,154,38,0.96) 0deg, rgba(255,154,38,0.96) 120deg, rgba(7,14,24,0.96) 120deg)";
+
+boostNumber.style.fontSize =
+    "36px";
+
+
+const v065UpdateHUD =
+    updateHUD;
+
+updateHUD =
+function () {
+
+    v065UpdateHUD();
+
+    const boostDegrees =
+        THREE.MathUtils.clamp(
+            boostAmount,
+            0,
+            100
+        ) * 3.6;
+
+    boostHud.style.background =
+        `radial-gradient(circle at center, rgba(7,14,24,0.97) 0 62%, transparent 63%), conic-gradient(rgba(255,154,38,0.98) 0deg ${boostDegrees}deg, rgba(255,255,255,0.10) ${boostDegrees}deg 360deg)`;
+};
+
+
+console.log(
+    "BOOSTBALL v0.6.6 — ARENA SHELL active."
+);
