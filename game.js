@@ -25,7 +25,7 @@ import * as THREE from
 // VERSION
 // ============================================================
 
-const GAME_VERSION = "v0.6.3";
+const GAME_VERSION = "v0.6.4";
 const GAME_CODENAME = "TRACTION CONTROL";
 
 
@@ -265,8 +265,8 @@ scene.add(
 // The field is genuinely larger.
 // ============================================================
 
-const FIELD_LENGTH = 190;
-const FIELD_WIDTH = 112;
+const FIELD_LENGTH = 220;
+const FIELD_WIDTH = 132;
 
 const HALF_LENGTH =
     FIELD_LENGTH / 2;
@@ -8211,7 +8211,7 @@ function updateGroundDriving(
 
 
     const yawChange =
-        -inputState.steer *
+        inputState.steer *
         steerRate *
         steeringMultiplier *
         movementDirection *
@@ -12502,4 +12502,3395 @@ requestAnimationFrame(
 //
 // ============================================================
 // DO NOT RUN YET.
+// ============================================================
+// ============================================================
+// BOOSTBALL v0.6.4 — WALL RIDER
+// ============================================================
+//
+// Surgical upgrade layer for v0.6.3.
+//
+// Adds:
+// - rebuilt car-anchored camera
+// - stable flip camera
+// - smooth ball-cam orbit
+// - camera ignores flip pitch/roll
+// - FPS top-right
+// - tiny bottom version text
+// - boost pad floor decals
+// - floating boost rings
+// - curved arena transitions
+// - ball curved-wall interaction
+// - wall adhesion foundation
+// - jump-off-wall behaviour
+// - improved jump tap/hold
+// - goal darkness
+// - goal explosion
+// - ball disappears on score
+// - restored controller defaults
+//
+// Sacred engine speeds remain untouched.
+// ============================================================
+
+
+// ============================================================
+// v0.6.4 TUNING
+// ============================================================
+
+const V064_WALL_CURVE_RADIUS = 7.5;
+
+const V064_WALL_ADHESION_HEIGHT = 13.5;
+
+const V064_WALL_ATTACH_SPEED = 4.0;
+
+const V064_WALL_GRIP = 18;
+
+const V064_WALL_STEER_SPEED = 2.15;
+
+const V064_WALL_JUMP_IMPULSE = 12.5;
+
+const V064_CAMERA_DISTANCE = 11.8;
+
+const V064_CAMERA_HEIGHT = 5.25;
+
+const V064_CAMERA_POSITION_RESPONSE = 8.2;
+
+const V064_CAMERA_ROTATION_RESPONSE = 7.2;
+
+const V064_CAMERA_LOOK_RESPONSE = 10.0;
+
+const V064_CAMERA_FLIP_OFFSET = 1.05;
+
+
+// ============================================================
+// CONTROLLER DEFAULTS — RESTORED
+// ============================================================
+//
+// Cross  = Jump
+// Circle = Ball Cam
+// Square = Powerslide
+// L1     = Boost
+// R1     = Scoreboard
+// L2     = Reverse
+// R2     = Accelerate
+//
+// Existing custom mappings are preserved unless you hit
+// "Reset Controller Bindings" in Settings.
+// ============================================================
+
+Object.assign(
+    DEFAULT_CONTROLLER_BINDINGS,
+    {
+        jump: 0,
+        ballCam: 1,
+        powerslide: 2,
+        boost: 4,
+        scoreboard: 5,
+        reverse: 6,
+        throttle: 7,
+        menu: 9,
+        reset: 10,
+
+        // Directional air roll remains remappable.
+        airRollLeft: null,
+        airRollRight: null
+    }
+);
+
+
+// ============================================================
+// VERSION / FPS PRESENTATION
+// ============================================================
+
+versionBadge.textContent =
+    `BOOSTBALL ${GAME_VERSION}`;
+
+versionBadge.title =
+    "WALL RIDER";
+
+versionBadge.style.top =
+    "auto";
+
+versionBadge.style.left =
+    "50%";
+
+versionBadge.style.bottom =
+    "4px";
+
+versionBadge.style.transform =
+    "translateX(-50%)";
+
+versionBadge.style.padding =
+    "0";
+
+versionBadge.style.background =
+    "transparent";
+
+versionBadge.style.border =
+    "none";
+
+versionBadge.style.borderRadius =
+    "0";
+
+versionBadge.style.color =
+    "rgba(255,255,255,0.18)";
+
+versionBadge.style.fontSize =
+    "9px";
+
+versionBadge.style.letterSpacing =
+    "1.4px";
+
+
+performanceDisplay.style.top =
+    "10px";
+
+performanceDisplay.style.left =
+    "auto";
+
+performanceDisplay.style.right =
+    "12px";
+
+performanceDisplay.style.padding =
+    "0";
+
+performanceDisplay.style.background =
+    "transparent";
+
+performanceDisplay.style.border =
+    "none";
+
+performanceDisplay.style.color =
+    "rgba(255,255,255,.48)";
+
+performanceDisplay.style.fontSize =
+    "10px";
+
+
+const v063UpdatePerformanceDisplay =
+    updatePerformanceDisplay;
+
+
+updatePerformanceDisplay =
+function (
+    dt
+) {
+
+    fpsFrames++;
+
+    fpsTimer +=
+        dt;
+
+
+    if (
+        fpsTimer <
+        0.5
+    ) {
+
+        return;
+    }
+
+
+    const fps =
+        Math.round(
+            fpsFrames /
+            fpsTimer
+        );
+
+
+    performanceDisplay.textContent =
+        `${fps} FPS`;
+
+
+    fpsFrames =
+        0;
+
+
+    fpsTimer =
+        0;
+};
+
+
+// ============================================================
+// BOOST PAD DECALS + FLOATING RINGS
+// ============================================================
+
+const v064PadDecalMaterial =
+    new THREE.MeshBasicMaterial({
+
+        color:
+            0xffa928,
+
+        transparent:
+            true,
+
+        opacity:
+            0.23,
+
+        depthWrite:
+            false,
+
+        side:
+            THREE.DoubleSide
+    });
+
+
+const v064PadRingMaterial =
+    new THREE.MeshBasicMaterial({
+
+        color:
+            0xffc247,
+
+        transparent:
+            true,
+
+        opacity:
+            0.82,
+
+        depthWrite:
+            false,
+
+        side:
+            THREE.DoubleSide
+    });
+
+
+for (
+    let i = 0;
+    i < boostPads.length;
+    i++
+) {
+
+    const pad =
+        boostPads[i];
+
+
+    // --------------------------------------------------------
+    // PERMANENT FLOOR DECAL
+    // --------------------------------------------------------
+
+    const decalRadius =
+        pad.big
+            ? 3.35
+            : 2.25;
+
+
+    const decal =
+        new THREE.Mesh(
+
+            new THREE.RingGeometry(
+                decalRadius * 0.68,
+                decalRadius,
+                pad.big
+                    ? 32
+                    : 24
+            ),
+
+            v064PadDecalMaterial.clone()
+        );
+
+
+    decal.rotation.x =
+        -Math.PI / 2;
+
+
+    decal.position.set(
+        pad.x,
+        0.028,
+        pad.z
+    );
+
+
+    scene.add(
+        decal
+    );
+
+
+    // Inner marking.
+
+    const inner =
+        new THREE.Mesh(
+
+            new THREE.RingGeometry(
+                decalRadius * 0.25,
+                decalRadius * 0.39,
+                pad.big
+                    ? 28
+                    : 20
+            ),
+
+            v064PadDecalMaterial.clone()
+        );
+
+
+    inner.rotation.x =
+        -Math.PI / 2;
+
+
+    inner.position.set(
+        pad.x,
+        0.030,
+        pad.z
+    );
+
+
+    scene.add(
+        inner
+    );
+
+
+    // --------------------------------------------------------
+    // FLOATING CIRCLE
+    // --------------------------------------------------------
+
+    const floatingRing =
+        new THREE.Mesh(
+
+            new THREE.TorusGeometry(
+
+                pad.big
+                    ? 1.70
+                    : 1.05,
+
+                pad.big
+                    ? 0.11
+                    : 0.075,
+
+                8,
+
+                pad.big
+                    ? 28
+                    : 20
+            ),
+
+            v064PadRingMaterial.clone()
+        );
+
+
+    floatingRing.position.set(
+
+        pad.x,
+
+        pad.big
+            ? 1.75
+            : 1.10,
+
+        pad.z
+    );
+
+
+    floatingRing.rotation.x =
+        Math.PI / 2;
+
+
+    scene.add(
+        floatingRing
+    );
+
+
+    pad.v064Decal =
+        decal;
+
+
+    pad.v064Inner =
+        inner;
+
+
+    pad.v064Ring =
+        floatingRing;
+}
+
+
+// ============================================================
+// BOOST PAD VISUAL UPDATE
+// ============================================================
+
+const v063AnimateBoostPads =
+    animateBoostPads;
+
+
+animateBoostPads =
+function (
+    elapsed
+) {
+
+    v063AnimateBoostPads(
+        elapsed
+    );
+
+
+    for (
+        let i = 0;
+        i < boostPads.length;
+        i++
+    ) {
+
+        const pad =
+            boostPads[i];
+
+
+        if (
+            !pad.v064Ring
+        ) {
+
+            continue;
+        }
+
+
+        pad.v064Ring.visible =
+            pad.active;
+
+
+        if (
+            !pad.active
+        ) {
+
+            continue;
+        }
+
+
+        pad.v064Ring.rotation.z =
+            elapsed *
+            (
+                pad.big
+                    ? 1.25
+                    : 0.90
+            );
+
+
+        pad.v064Ring.position.y =
+
+            (
+                pad.big
+                    ? 1.75
+                    : 1.10
+            )
+
+            +
+
+            Math.sin(
+                elapsed * 2.8 +
+                i * 0.65
+            )
+
+            *
+
+            (
+                pad.big
+                    ? 0.16
+                    : 0.10
+            );
+
+
+        const pulse =
+            1 +
+            Math.sin(
+                elapsed * 3.4 +
+                i
+            ) *
+            0.06;
+
+
+        pad.v064Ring.scale.setScalar(
+            pulse
+        );
+    }
+};
+
+
+// ============================================================
+// CURVED WALL VISUALS
+// ============================================================
+//
+// These are segmented quarter-pipe pieces.
+// Much cheaper than making one enormous high-resolution mesh.
+// ============================================================
+
+const v064CurveMaterial =
+    new THREE.MeshStandardMaterial({
+
+        color:
+            0x1b6f35,
+
+        roughness:
+            0.92,
+
+        metalness:
+            0.0
+    });
+
+
+function v064CreateSideCurve(
+    side
+) {
+
+    const segments =
+        12;
+
+
+    for (
+        let i = 0;
+        i < segments;
+        i++
+    ) {
+
+        const t0 =
+            i / segments;
+
+
+        const t1 =
+            (i + 1) /
+            segments;
+
+
+        const a0 =
+            t0 *
+            Math.PI /
+            2;
+
+
+        const a1 =
+            t1 *
+            Math.PI /
+            2;
+
+
+        const amid =
+            (
+                a0 +
+                a1
+            ) / 2;
+
+
+        const z0 =
+            HALF_WIDTH -
+            V064_WALL_CURVE_RADIUS +
+            Math.sin(
+                a0
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const z1 =
+            HALF_WIDTH -
+            V064_WALL_CURVE_RADIUS +
+            Math.sin(
+                a1
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const y0 =
+            V064_WALL_CURVE_RADIUS -
+            Math.cos(
+                a0
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const y1 =
+            V064_WALL_CURVE_RADIUS -
+            Math.cos(
+                a1
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const width =
+            Math.sqrt(
+
+                (
+                    z1 -
+                    z0
+                ) *
+                (
+                    z1 -
+                    z0
+                )
+
+                +
+
+                (
+                    y1 -
+                    y0
+                ) *
+                (
+                    y1 -
+                    y0
+                )
+            );
+
+
+        const strip =
+            new THREE.Mesh(
+
+                new THREE.BoxGeometry(
+                    FIELD_LENGTH,
+                    0.20,
+                    width + 0.06
+                ),
+
+                v064CurveMaterial
+            );
+
+
+        strip.position.set(
+
+            0,
+
+            (
+                y0 +
+                y1
+            ) / 2,
+
+            side *
+            (
+                (
+                    z0 +
+                    z1
+                ) / 2
+            )
+        );
+
+
+        strip.rotation.x =
+            side *
+            amid;
+
+
+        strip.receiveShadow =
+            true;
+
+
+        scene.add(
+            strip
+        );
+    }
+}
+
+
+v064CreateSideCurve(
+    1
+);
+
+
+v064CreateSideCurve(
+    -1
+);
+
+
+// ============================================================
+// END-WALL CURVED VISUALS
+// ============================================================
+
+function v064CreateEndCurve(
+    side
+) {
+
+    const segments =
+        12;
+
+
+    for (
+        let i = 0;
+        i < segments;
+        i++
+    ) {
+
+        const t0 =
+            i / segments;
+
+
+        const t1 =
+            (
+                i +
+                1
+            ) /
+            segments;
+
+
+        const a0 =
+            t0 *
+            Math.PI /
+            2;
+
+
+        const a1 =
+            t1 *
+            Math.PI /
+            2;
+
+
+        const amid =
+            (
+                a0 +
+                a1
+            ) / 2;
+
+
+        const x0 =
+            HALF_LENGTH -
+            V064_WALL_CURVE_RADIUS +
+            Math.sin(
+                a0
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const x1 =
+            HALF_LENGTH -
+            V064_WALL_CURVE_RADIUS +
+            Math.sin(
+                a1
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const y0 =
+            V064_WALL_CURVE_RADIUS -
+            Math.cos(
+                a0
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const y1 =
+            V064_WALL_CURVE_RADIUS -
+            Math.cos(
+                a1
+            ) *
+            V064_WALL_CURVE_RADIUS;
+
+
+        const width =
+            Math.sqrt(
+
+                (
+                    x1 -
+                    x0
+                ) *
+                (
+                    x1 -
+                    x0
+                )
+
+                +
+
+                (
+                    y1 -
+                    y0
+                ) *
+                (
+                    y1 -
+                    y0
+                )
+            );
+
+
+        // Leave the goal opening clear.
+
+        const sidePieceWidth =
+            (
+                FIELD_WIDTH -
+                GOAL_WIDTH
+            ) / 2;
+
+
+        for (
+            const zSide
+            of [-1, 1]
+        ) {
+
+            const strip =
+                new THREE.Mesh(
+
+                    new THREE.BoxGeometry(
+                        width + 0.06,
+                        0.20,
+                        sidePieceWidth
+                    ),
+
+                    v064CurveMaterial
+                );
+
+
+            strip.position.set(
+
+                side *
+                (
+                    (
+                        x0 +
+                        x1
+                    ) / 2
+                ),
+
+                (
+                    y0 +
+                    y1
+                ) / 2,
+
+                zSide *
+                (
+                    GOAL_WIDTH / 2 +
+                    sidePieceWidth / 2
+                )
+            );
+
+
+            strip.rotation.z =
+                -side *
+                amid;
+
+
+            strip.receiveShadow =
+                true;
+
+
+            scene.add(
+                strip
+            );
+        }
+    }
+}
+
+
+v064CreateEndCurve(
+    1
+);
+
+
+v064CreateEndCurve(
+    -1
+);
+
+
+// ============================================================
+// CURVE MATHEMATICS
+// ============================================================
+
+function v064CurveHeight(
+    distanceFromWall
+) {
+
+    const radius =
+        V064_WALL_CURVE_RADIUS;
+
+
+    if (
+        distanceFromWall >=
+        radius
+    ) {
+
+        return 0;
+    }
+
+
+    const d =
+        THREE.MathUtils.clamp(
+            distanceFromWall,
+            0,
+            radius
+        );
+
+
+    const inside =
+        Math.max(
+            0,
+            radius * radius -
+            (
+                radius -
+                d
+            ) *
+            (
+                radius -
+                d
+            )
+        );
+
+
+    return (
+        radius -
+        Math.sqrt(
+            inside
+        )
+    );
+}
+
+
+// ============================================================
+// BALL CURVED WALL PHYSICS
+// ============================================================
+
+function v064ResolveBallSideCurve() {
+
+    if (
+        Math.abs(
+            ball.position.z
+        ) >
+        HALF_WIDTH +
+            BALL_RADIUS
+    ) {
+
+        return;
+    }
+
+
+    const wallDistance =
+        HALF_WIDTH -
+        Math.abs(
+            ball.position.z
+        );
+
+
+    if (
+        wallDistance >=
+        V064_WALL_CURVE_RADIUS
+        ||
+        wallDistance <
+        0
+    ) {
+
+        return;
+    }
+
+
+    const surfaceY =
+        v064CurveHeight(
+            wallDistance
+        );
+
+
+    const minimumY =
+        surfaceY +
+        BALL_RADIUS;
+
+
+    if (
+        ball.position.y >=
+        minimumY
+    ) {
+
+        return;
+    }
+
+
+    const side =
+        Math.sign(
+            ball.position.z
+        ) || 1;
+
+
+    const angle =
+        THREE.MathUtils.clamp(
+            (
+                V064_WALL_CURVE_RADIUS -
+                wallDistance
+            ) /
+            V064_WALL_CURVE_RADIUS,
+            0,
+            1
+        ) *
+        Math.PI /
+        2;
+
+
+    tempDirection.set(
+
+        0,
+
+        Math.cos(
+            angle
+        ),
+
+        -side *
+        Math.sin(
+            angle
+        )
+    );
+
+
+    ball.position.y =
+        minimumY;
+
+
+    const inwardVelocity =
+        ballVelocity.dot(
+            tempDirection
+        );
+
+
+    if (
+        inwardVelocity <
+        0
+    ) {
+
+        ballVelocity.addScaledVector(
+
+            tempDirection,
+
+            -inwardVelocity *
+            (
+                1 +
+                BALL_WALL_BOUNCE *
+                0.72
+            )
+        );
+    }
+}
+
+
+function v064ResolveBallEndCurve() {
+
+    if (
+        ballFitsGoalOpening()
+    ) {
+
+        return;
+    }
+
+
+    const wallDistance =
+        HALF_LENGTH -
+        Math.abs(
+            ball.position.x
+        );
+
+
+    if (
+        wallDistance >=
+        V064_WALL_CURVE_RADIUS
+        ||
+        wallDistance <
+        0
+    ) {
+
+        return;
+    }
+
+
+    const surfaceY =
+        v064CurveHeight(
+            wallDistance
+        );
+
+
+    const minimumY =
+        surfaceY +
+        BALL_RADIUS;
+
+
+    if (
+        ball.position.y >=
+        minimumY
+    ) {
+
+        return;
+    }
+
+
+    const side =
+        Math.sign(
+            ball.position.x
+        ) || 1;
+
+
+    const angle =
+        THREE.MathUtils.clamp(
+            (
+                V064_WALL_CURVE_RADIUS -
+                wallDistance
+            ) /
+            V064_WALL_CURVE_RADIUS,
+            0,
+            1
+        ) *
+        Math.PI /
+        2;
+
+
+    tempDirection.set(
+
+        -side *
+        Math.sin(
+            angle
+        ),
+
+        Math.cos(
+            angle
+        ),
+
+        0
+    );
+
+
+    ball.position.y =
+        minimumY;
+
+
+    const inwardVelocity =
+        ballVelocity.dot(
+            tempDirection
+        );
+
+
+    if (
+        inwardVelocity <
+        0
+    ) {
+
+        ballVelocity.addScaledVector(
+
+            tempDirection,
+
+            -inwardVelocity *
+            (
+                1 +
+                BALL_WALL_BOUNCE *
+                0.72
+            )
+        );
+    }
+}
+
+
+const v063UpdateBall =
+    updateBall;
+
+
+updateBall =
+function (
+    dt
+) {
+
+    v063UpdateBall(
+        dt
+    );
+
+
+    v064ResolveBallSideCurve();
+
+    v064ResolveBallEndCurve();
+
+
+    // --------------------------------------------------------
+    // DARKEN BALL INSIDE / APPROACHING GOAL
+    // --------------------------------------------------------
+
+    const goalDepth =
+        Math.max(
+            0,
+            Math.abs(
+                ball.position.x
+            )
+            -
+            (
+                HALF_LENGTH -
+                5
+            )
+        );
+
+
+    const darkness =
+        THREE.MathUtils.clamp(
+            goalDepth /
+            (
+                GOAL_DEPTH +
+                5
+            ),
+            0,
+            0.68
+        );
+
+
+    ball.material.color.setRGB(
+
+        0.96 *
+        (
+            1 -
+            darkness
+        ),
+
+        0.96 *
+        (
+            1 -
+            darkness
+        ),
+
+        0.96 *
+        (
+            1 -
+            darkness
+        )
+    );
+};
+
+
+// ============================================================
+// WALL DRIVING STATE
+// ============================================================
+
+let v064WallMode =
+    null;
+
+
+let v064WallSide =
+    0;
+
+
+let v064WallHeading =
+    0;
+
+
+let v064WallDetachTimer =
+    0;
+
+
+const v064WallForward =
+    new THREE.Vector3();
+
+
+const v064WallUp =
+    new THREE.Vector3();
+
+
+const v064WallRight =
+    new THREE.Vector3();
+
+
+const v064WallMatrix =
+    new THREE.Matrix4();
+
+
+function v064SetWallOrientation() {
+
+    if (
+        v064WallMode ===
+        "side"
+    ) {
+
+        v064WallForward.set(
+
+            Math.cos(
+                v064WallHeading
+            ),
+
+            Math.sin(
+                v064WallHeading
+            ),
+
+            0
+        );
+
+
+        v064WallUp.set(
+            0,
+            0,
+            -v064WallSide
+        );
+
+    } else {
+
+        v064WallForward.set(
+
+            0,
+
+            Math.sin(
+                v064WallHeading
+            ),
+
+            Math.cos(
+                v064WallHeading
+            )
+        );
+
+
+        v064WallUp.set(
+            -v064WallSide,
+            0,
+            0
+        );
+    }
+
+
+    v064WallRight
+        .crossVectors(
+            v064WallForward,
+            v064WallUp
+        )
+        .normalize();
+
+
+    v064WallMatrix.makeBasis(
+
+        v064WallForward,
+
+        v064WallUp,
+
+        v064WallRight
+    );
+
+
+    tempQuaternion
+        .setFromRotationMatrix(
+            v064WallMatrix
+        );
+
+
+    car.quaternion.slerp(
+
+        tempQuaternion,
+
+        0.30
+    );
+}
+
+
+// ============================================================
+// ENTER WALL
+// ============================================================
+
+function v064TryEnterWall() {
+
+    if (
+        v064WallDetachTimer >
+        0
+    ) {
+
+        return false;
+    }
+
+
+    if (
+        !grounded
+        &&
+        car.position.y >
+        V064_WALL_CURVE_RADIUS +
+            1
+    ) {
+
+        return false;
+    }
+
+
+    // --------------------------------------------------------
+    // SIDE WALL
+    // --------------------------------------------------------
+
+    const sideDistance =
+        HALF_WIDTH -
+        Math.abs(
+            car.position.z
+        );
+
+
+    if (
+        sideDistance <
+        1.75
+        &&
+        car.position.y <
+        V064_WALL_ADHESION_HEIGHT
+    ) {
+
+        const outwardSpeed =
+            Math.abs(
+                carVelocity.z
+            );
+
+
+        if (
+            outwardSpeed >
+            V064_WALL_ATTACH_SPEED
+            ||
+            car.position.y >
+            1.5
+        ) {
+
+            v064WallMode =
+                "side";
+
+
+            v064WallSide =
+                Math.sign(
+                    car.position.z
+                ) || 1;
+
+
+            const xSpeed =
+                carVelocity.x;
+
+
+            const climbSpeed =
+                Math.max(
+                    3,
+                    outwardSpeed *
+                    0.82 +
+                    Math.max(
+                        0,
+                        verticalVelocity
+                    )
+                );
+
+
+            v064WallHeading =
+                Math.atan2(
+                    climbSpeed,
+                    xSpeed
+                );
+
+
+            verticalVelocity =
+                climbSpeed;
+
+
+            carVelocity.z =
+                0;
+
+
+            grounded =
+                true;
+
+
+            groundContact =
+                true;
+
+
+            return true;
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // END WALL
+    // --------------------------------------------------------
+
+    if (
+        !carFitsGoalOpening()
+    ) {
+
+        const endDistance =
+            HALF_LENGTH -
+            Math.abs(
+                car.position.x
+            );
+
+
+        if (
+            endDistance <
+            1.75
+            &&
+            car.position.y <
+            V064_WALL_ADHESION_HEIGHT
+        ) {
+
+            const outwardSpeed =
+                Math.abs(
+                    carVelocity.x
+                );
+
+
+            if (
+                outwardSpeed >
+                V064_WALL_ATTACH_SPEED
+                ||
+                car.position.y >
+                1.5
+            ) {
+
+                v064WallMode =
+                    "end";
+
+
+                v064WallSide =
+                    Math.sign(
+                        car.position.x
+                    ) || 1;
+
+
+                const zSpeed =
+                    carVelocity.z;
+
+
+                const climbSpeed =
+                    Math.max(
+                        3,
+                        outwardSpeed *
+                        0.82 +
+                        Math.max(
+                            0,
+                            verticalVelocity
+                        )
+                    );
+
+
+                v064WallHeading =
+                    Math.atan2(
+                        climbSpeed,
+                        zSpeed
+                    );
+
+
+                verticalVelocity =
+                    climbSpeed;
+
+
+                carVelocity.x =
+                    0;
+
+
+                grounded =
+                    true;
+
+
+                groundContact =
+                    true;
+
+
+                return true;
+            }
+        }
+    }
+
+
+    return false;
+}
+
+
+// ============================================================
+// WALL DRIVING
+// ============================================================
+
+function v064UpdateWallDriving(
+    dt
+) {
+
+    if (
+        !v064WallMode
+    ) {
+
+        return;
+    }
+
+
+    const throttle =
+        inputState.throttle;
+
+
+    const reverse =
+        inputState.reverse;
+
+
+    // Forward speed along wall plane.
+
+    let wallSpeed;
+
+
+    if (
+        v064WallMode ===
+        "side"
+    ) {
+
+        wallSpeed =
+            carVelocity.x *
+            Math.cos(
+                v064WallHeading
+            )
+            +
+            verticalVelocity *
+            Math.sin(
+                v064WallHeading
+            );
+
+    } else {
+
+        wallSpeed =
+            carVelocity.z *
+            Math.cos(
+                v064WallHeading
+            )
+            +
+            verticalVelocity *
+            Math.sin(
+                v064WallHeading
+            );
+    }
+
+
+    if (
+        throttle >
+        0.01
+    ) {
+
+        wallSpeed +=
+            ACCELERATION *
+            throttle *
+            dt;
+
+
+        wallSpeed =
+            Math.min(
+                wallSpeed,
+                inputState.boost
+                    ? BOOST_TOP_SPEED
+                    : DRIVE_TOP_SPEED
+            );
+    }
+
+
+    if (
+        reverse >
+        0.01
+    ) {
+
+        wallSpeed -=
+            REVERSE_ACCELERATION *
+            reverse *
+            dt;
+
+
+        wallSpeed =
+            Math.max(
+                wallSpeed,
+                -REVERSE_TOP_SPEED
+            );
+    }
+
+
+    if (
+        throttle <
+        0.01
+        &&
+        reverse <
+        0.01
+    ) {
+
+        wallSpeed =
+            moveToward(
+
+                wallSpeed,
+
+                0,
+
+                COAST_DRAG *
+                Math.max(
+                    1,
+                    Math.abs(
+                        wallSpeed
+                    )
+                ) *
+                dt
+            );
+    }
+
+
+    const authority =
+        THREE.MathUtils.clamp(
+            Math.abs(
+                wallSpeed
+            ) / 4,
+            0.18,
+            1
+        );
+
+
+    v064WallHeading +=
+
+        inputState.steer *
+
+        V064_WALL_STEER_SPEED *
+
+        (
+            wallSpeed < -0.5
+                ? -1
+                : 1
+        ) *
+
+        authority *
+
+        dt;
+
+
+    // Don't point directly through the wall.
+
+    v064WallHeading =
+        THREE.MathUtils.clamp(
+
+            v064WallHeading,
+
+            -Math.PI * 0.47,
+
+            Math.PI * 0.47
+        );
+
+
+    const along =
+        Math.cos(
+            v064WallHeading
+        ) *
+        wallSpeed;
+
+
+    const vertical =
+        Math.sin(
+            v064WallHeading
+        ) *
+        wallSpeed;
+
+
+    if (
+        v064WallMode ===
+        "side"
+    ) {
+
+        carVelocity.x =
+            along;
+
+
+        carVelocity.z =
+            0;
+
+
+        car.position.z =
+            v064WallSide *
+            (
+                HALF_WIDTH -
+                GROUNDED_CAR_HEIGHT
+            );
+
+    } else {
+
+        carVelocity.z =
+            along;
+
+
+        carVelocity.x =
+            0;
+
+
+        car.position.x =
+            v064WallSide *
+            (
+                HALF_LENGTH -
+                GROUNDED_CAR_HEIGHT
+            );
+    }
+
+
+    verticalVelocity =
+        vertical;
+
+
+    // Adhesion:
+    // tyres remain planted rather than gravity peeling
+    // the car instantly away from the wall.
+
+    grounded =
+        true;
+
+
+    groundContact =
+        true;
+
+
+    v064SetWallOrientation();
+
+
+    // --------------------------------------------------------
+    // BOOST WHILE ON WALL
+    // --------------------------------------------------------
+
+    if (
+        inputState.boost
+        &&
+        boostAmount >
+        0
+    ) {
+
+        wallSpeed +=
+            BOOST_ACCELERATION *
+            dt;
+
+
+        boostAmount -=
+            BOOST_USAGE *
+            dt;
+
+
+        boostAmount =
+            Math.max(
+                0,
+                boostAmount
+            );
+    }
+
+
+    // --------------------------------------------------------
+    // WALL JUMP
+    // --------------------------------------------------------
+
+    if (
+        inputState.jumpPressed
+    ) {
+
+        const oldMode =
+            v064WallMode;
+
+
+        const oldSide =
+            v064WallSide;
+
+
+        v064WallMode =
+            null;
+
+
+        grounded =
+            false;
+
+
+        groundContact =
+            false;
+
+
+        firstJumpUsed =
+            true;
+
+
+        secondJumpUsed =
+            false;
+
+
+        jumpHeldTime =
+            0;
+
+
+        v064WallDetachTimer =
+            0.20;
+
+
+        if (
+            oldMode ===
+            "side"
+        ) {
+
+            carVelocity.z =
+                -oldSide *
+                V064_WALL_JUMP_IMPULSE;
+
+        } else {
+
+            carVelocity.x =
+                -oldSide *
+                V064_WALL_JUMP_IMPULSE;
+        }
+
+
+        verticalVelocity =
+            Math.max(
+                verticalVelocity,
+                7.5
+            );
+
+
+        car.position.y +=
+            0.08;
+
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // FALL OFF IF WE BASICALLY STOP HIGH ON WALL
+    // --------------------------------------------------------
+
+    if (
+        Math.abs(
+            wallSpeed
+        ) <
+        1.1
+        &&
+        car.position.y >
+        2.0
+        &&
+        throttle <
+        0.05
+        &&
+        reverse <
+        0.05
+    ) {
+
+        v064WallMode =
+            null;
+
+
+        grounded =
+            false;
+
+
+        groundContact =
+            false;
+
+
+        v064WallDetachTimer =
+            0.12;
+    }
+}
+
+
+// ============================================================
+// CAR UPDATE WRAPPER
+// ============================================================
+
+const v063UpdateCar =
+    updateCar;
+
+
+updateCar =
+function (
+    dt
+) {
+
+    if (
+        v064WallDetachTimer >
+        0
+    ) {
+
+        v064WallDetachTimer -=
+            dt;
+    }
+
+
+    // Already attached to a wall.
+
+    if (
+        v064WallMode
+    ) {
+
+        v064UpdateWallDriving(
+            dt
+        );
+
+
+        if (
+            !v064WallMode
+        ) {
+
+            return;
+        }
+
+
+        // Integrate wall movement.
+
+        if (
+            v064WallMode ===
+            "side"
+        ) {
+
+            car.position.x +=
+                carVelocity.x *
+                dt;
+
+        } else {
+
+            car.position.z +=
+                carVelocity.z *
+                dt;
+        }
+
+
+        car.position.y +=
+            verticalVelocity *
+            dt;
+
+
+        car.position.y =
+            THREE.MathUtils.clamp(
+
+                car.position.y,
+
+                GROUNDED_CAR_HEIGHT,
+
+                WALL_HEIGHT -
+                    1.2
+            );
+
+
+        clampHorizontalSpeed(
+            ABSOLUTE_SPEED_LIMIT
+        );
+
+
+        return;
+    }
+
+
+    // Normal v0.6.3 physics.
+
+    v063UpdateCar(
+        dt
+    );
+
+
+    // --------------------------------------------------------
+    // SMOOTH FLOOR -> WALL CURVE
+    // --------------------------------------------------------
+
+    const sideDistance =
+        HALF_WIDTH -
+        Math.abs(
+            car.position.z
+        );
+
+
+    if (
+        sideDistance >= 0
+        &&
+        sideDistance <
+        V064_WALL_CURVE_RADIUS
+        &&
+        car.position.y <
+        V064_WALL_CURVE_RADIUS +
+            1.2
+    ) {
+
+        const surface =
+            v064CurveHeight(
+                sideDistance
+            );
+
+
+        const desiredY =
+            surface +
+            GROUNDED_CAR_HEIGHT;
+
+
+        if (
+            car.position.y <
+            desiredY
+        ) {
+
+            car.position.y =
+                desiredY;
+
+
+            verticalVelocity =
+                Math.max(
+                    verticalVelocity,
+                    Math.abs(
+                        carVelocity.z
+                    ) *
+                    0.40
+                );
+
+
+            grounded =
+                true;
+
+
+            groundContact =
+                true;
+        }
+    }
+
+
+    if (
+        !carFitsGoalOpening()
+    ) {
+
+        const endDistance =
+            HALF_LENGTH -
+            Math.abs(
+                car.position.x
+            );
+
+
+        if (
+            endDistance >= 0
+            &&
+            endDistance <
+            V064_WALL_CURVE_RADIUS
+            &&
+            car.position.y <
+            V064_WALL_CURVE_RADIUS +
+                1.2
+        ) {
+
+            const surface =
+                v064CurveHeight(
+                    endDistance
+                );
+
+
+            const desiredY =
+                surface +
+                GROUNDED_CAR_HEIGHT;
+
+
+            if (
+                car.position.y <
+                desiredY
+            ) {
+
+                car.position.y =
+                    desiredY;
+
+
+                verticalVelocity =
+                    Math.max(
+                        verticalVelocity,
+                        Math.abs(
+                            carVelocity.x
+                        ) *
+                        0.40
+                    );
+
+
+                grounded =
+                    true;
+
+
+                groundContact =
+                    true;
+            }
+        }
+    }
+
+
+    v064TryEnterWall();
+};
+
+
+// ============================================================
+// RESET WALL STATE
+// ============================================================
+
+const v063ResetCar =
+    resetCar;
+
+
+resetCar =
+function () {
+
+    v064WallMode =
+        null;
+
+
+    v064WallSide =
+        0;
+
+
+    v064WallHeading =
+        0;
+
+
+    v064WallDetachTimer =
+        0;
+
+
+    v063ResetCar();
+};
+
+
+// ============================================================
+// BETTER JUMP TAP / HOLD
+// ============================================================
+//
+// A quick tap now receives the base impulse only.
+//
+// The hold force doesn't begin until the button has actually
+// been held for a few frames.
+// ============================================================
+
+let v064JumpHoldDelay =
+    0;
+
+
+const v063BeginFirstJump =
+    beginFirstJump;
+
+
+beginFirstJump =
+function () {
+
+    v063BeginFirstJump();
+
+
+    v064JumpHoldDelay =
+        0.045;
+};
+
+
+const v063UpdateJump =
+    updateJump;
+
+
+updateJump =
+function (
+    dt
+) {
+
+    if (
+        v064JumpHoldDelay >
+        0
+    ) {
+
+        const originalJump =
+            inputState.jump;
+
+
+        inputState.jump =
+            false;
+
+
+        v063UpdateJump(
+            dt
+        );
+
+
+        inputState.jump =
+            originalJump;
+
+
+        v064JumpHoldDelay -=
+            dt;
+
+
+        return;
+    }
+
+
+    v063UpdateJump(
+        dt
+    );
+};
+
+
+// ============================================================
+// AERIAL + DODGE BLENDING
+// ============================================================
+//
+// During the latter half of a flip, directional air roll gets
+// some authority back.
+//
+// This makes air-roll -> second-jump flips imperfect and
+// orientation-dependent instead of snapping into a pristine
+// canned animation.
+// ============================================================
+
+const v063UpdateAerialControl =
+    updateAerialControl;
+
+
+updateAerialControl =
+function (
+    dt
+) {
+
+    if (
+        dodgeActive
+        &&
+        dodgeTimer <
+        DODGE_INPUT_LOCK_TIME
+    ) {
+
+        // Allow directional roll immediately,
+        // but keep pitch/yaw mostly locked.
+
+        let roll =
+            0;
+
+
+        if (
+            inputState.airRollLeft
+        ) {
+
+            roll -=
+                1;
+        }
+
+
+        if (
+            inputState.airRollRight
+        ) {
+
+            roll +=
+                1;
+        }
+
+
+        if (
+            roll !==
+            0
+        ) {
+
+            getCarForward(
+                tempAxis
+            );
+
+
+            rotateCarAroundWorldAxis(
+
+                tempAxis,
+
+                roll *
+                AIR_ROLL_SPEED *
+                dt *
+                0.58
+            );
+        }
+
+
+        return;
+    }
+
+
+    v063UpdateAerialControl(
+        dt
+    );
+};
+
+
+// ============================================================
+// STABLE GROUND COLLISION
+// ============================================================
+//
+// Authoritative wheel height.
+// No tiny floor bounce loop.
+// ============================================================
+
+resolveCarFloorCollision =
+function () {
+
+    const uprightAmount =
+        getCarUprightAmount();
+
+
+    if (
+        car.position.y <=
+        GROUNDED_CAR_HEIGHT +
+            0.025
+        &&
+        uprightAmount >
+        0.42
+    ) {
+
+        car.position.y =
+            GROUNDED_CAR_HEIGHT;
+
+
+        if (
+            verticalVelocity <
+            0
+        ) {
+
+            // Kill tiny repeated landing oscillation.
+
+            verticalVelocity =
+                0;
+        }
+
+
+        groundContact =
+            true;
+
+
+        grounded =
+            true;
+
+
+        firstJumpUsed =
+            false;
+
+
+        secondJumpUsed =
+            false;
+
+
+        jumpHeldTime =
+            0;
+
+
+        dodgeActive =
+            false;
+
+
+        dodgeTimer =
+            0;
+
+
+        dodgeRotationRemaining =
+            0;
+
+
+        return;
+    }
+
+
+    const minimumChassisHeight =
+        0.68;
+
+
+    if (
+        car.position.y <
+        minimumChassisHeight
+    ) {
+
+        car.position.y =
+            minimumChassisHeight;
+
+
+        if (
+            verticalVelocity <
+            -3.5
+        ) {
+
+            // Tiny believable chassis rebound on a hard
+            // upside-down/side impact only.
+
+            verticalVelocity *=
+                -0.06;
+
+        } else if (
+            verticalVelocity <
+            0
+        ) {
+
+            verticalVelocity =
+                0;
+        }
+
+
+        groundContact =
+            true;
+
+
+        grounded =
+            false;
+
+
+        carVelocity.x *=
+            0.985;
+
+
+        carVelocity.z *=
+            0.985;
+
+    } else {
+
+        groundContact =
+            false;
+    }
+};
+
+
+// ============================================================
+// CAMERA REBUILD
+// ============================================================
+//
+// IMPORTANT:
+//
+// Camera orientation comes from:
+// - horizontal driving direction
+// - persistent camera orbit
+//
+// NOT car pitch/roll.
+//
+// Therefore:
+// - front flip does not reverse camera
+// - side flip does not roll camera
+// - air roll does not drag horizon around
+// ============================================================
+
+let v064CameraYaw =
+    carRotation;
+
+
+let v064CameraYawInitialised =
+    false;
+
+
+let v064CameraFlipSide =
+    0;
+
+
+let v064CameraFlipForward =
+    0;
+
+
+const v064CameraDirection =
+    new THREE.Vector3();
+
+
+const v064CameraRight =
+    new THREE.Vector3();
+
+
+const v064CameraAnchor =
+    new THREE.Vector3();
+
+
+const v064CameraTarget =
+    new THREE.Vector3();
+
+
+function v064AngleDifference(
+    target,
+    current
+) {
+
+    return Math.atan2(
+
+        Math.sin(
+            target -
+            current
+        ),
+
+        Math.cos(
+            target -
+            current
+        )
+    );
+}
+
+
+updateCamera =
+function (
+    dt
+) {
+
+    // --------------------------------------------------------
+    // CAR HEADING
+    // --------------------------------------------------------
+
+    getFlatCarForward(
+        cameraForward
+    );
+
+
+    let desiredYaw;
+
+
+    if (
+        ballCamEnabled
+        &&
+        ball.visible
+    ) {
+
+        cameraBallDirection
+            .copy(
+                ball.position
+            )
+            .sub(
+                car.position
+            );
+
+
+        cameraBallDirection.y =
+            0;
+
+
+        if (
+            cameraBallDirection.lengthSq() >
+            0.01
+        ) {
+
+            cameraBallDirection.normalize();
+
+
+            desiredYaw =
+                Math.atan2(
+                    cameraBallDirection.z,
+                    cameraBallDirection.x
+                );
+
+        } else {
+
+            desiredYaw =
+                Math.atan2(
+                    cameraForward.z,
+                    cameraForward.x
+                );
+        }
+
+    } else {
+
+        // Car cam uses HEADING rather than raw local
+        // forward while flipping.
+
+        desiredYaw =
+            carRotation;
+
+
+        // At meaningful forward speed we can gently let
+        // movement influence the camera, but NEVER perform
+        // the old instant backwards swing.
+
+        const speed =
+            getHorizontalSpeed();
+
+
+        if (
+            speed >
+            4
+            &&
+            !dodgeActive
+            &&
+            !v064WallMode
+        ) {
+
+            const velocityYaw =
+                Math.atan2(
+                    carVelocity.z,
+                    carVelocity.x
+                );
+
+
+            const headingDifference =
+                Math.abs(
+                    v064AngleDifference(
+                        velocityYaw,
+                        carRotation
+                    )
+                );
+
+
+            // Only use velocity when it's broadly travelling
+            // in the direction the car faces.
+            //
+            // Reversing therefore doesn't spin the camera
+            // 180 degrees.
+
+            if (
+                headingDifference <
+                Math.PI *
+                0.55
+            ) {
+
+                desiredYaw =
+                    carRotation +
+                    v064AngleDifference(
+                        velocityYaw,
+                        carRotation
+                    ) *
+                    0.30;
+            }
+        }
+    }
+
+
+    if (
+        !v064CameraYawInitialised
+    ) {
+
+        v064CameraYaw =
+            desiredYaw;
+
+
+        v064CameraYawInitialised =
+            true;
+    }
+
+
+    const yawBlend =
+        1 -
+        Math.exp(
+            -V064_CAMERA_ROTATION_RESPONSE *
+            dt
+        );
+
+
+    v064CameraYaw +=
+
+        v064AngleDifference(
+            desiredYaw,
+            v064CameraYaw
+        )
+
+        *
+
+        yawBlend;
+
+
+    v064CameraDirection.set(
+
+        Math.cos(
+            v064CameraYaw
+        ),
+
+        0,
+
+        Math.sin(
+            v064CameraYaw
+        )
+    );
+
+
+    v064CameraRight.set(
+
+        -v064CameraDirection.z,
+
+        0,
+
+        v064CameraDirection.x
+    );
+
+
+    // --------------------------------------------------------
+    // CAR ANCHOR
+    // --------------------------------------------------------
+
+    v064CameraAnchor.copy(
+        car.position
+    );
+
+
+    v064CameraAnchor.y +=
+        1.05;
+
+
+    // --------------------------------------------------------
+    // FLIP FRAMING OFFSET
+    // --------------------------------------------------------
+
+    let targetFlipSide =
+        0;
+
+
+    let targetFlipForward =
+        0;
+
+
+    if (
+        dodgeActive
+    ) {
+
+        const progress =
+            THREE.MathUtils.clamp(
+                dodgeTimer /
+                DODGE_DURATION,
+                0,
+                1
+            );
+
+
+        const envelope =
+            Math.sin(
+                progress *
+                Math.PI
+            );
+
+
+        targetFlipSide =
+            dodgeSideDirection *
+            envelope *
+            V064_CAMERA_FLIP_OFFSET;
+
+
+        targetFlipForward =
+            -dodgePitchDirection *
+            envelope *
+            V064_CAMERA_FLIP_OFFSET *
+            0.72;
+    }
+
+
+    const flipBlend =
+        1 -
+        Math.exp(
+            -12 *
+            dt
+        );
+
+
+    v064CameraFlipSide =
+        THREE.MathUtils.lerp(
+            v064CameraFlipSide,
+            targetFlipSide,
+            flipBlend
+        );
+
+
+    v064CameraFlipForward =
+        THREE.MathUtils.lerp(
+            v064CameraFlipForward,
+            targetFlipForward,
+            flipBlend
+        );
+
+
+    // --------------------------------------------------------
+    // DISTANCE
+    // --------------------------------------------------------
+
+    const speedFraction =
+        THREE.MathUtils.clamp(
+            getHorizontalSpeed() /
+            BOOST_TOP_SPEED,
+            0,
+            1
+        );
+
+
+    const distance =
+        V064_CAMERA_DISTANCE +
+        speedFraction *
+        1.35;
+
+
+    cameraPositionTarget
+        .copy(
+            v064CameraAnchor
+        )
+        .addScaledVector(
+            v064CameraDirection,
+            -distance
+        )
+        .addScaledVector(
+            v064CameraRight,
+            -v064CameraFlipSide
+        );
+
+
+    cameraPositionTarget.y +=
+        V064_CAMERA_HEIGHT;
+
+
+    cameraPositionTarget.addScaledVector(
+
+        v064CameraDirection,
+
+        -v064CameraFlipForward
+    );
+
+
+    // --------------------------------------------------------
+    // LOOK TARGET
+    // --------------------------------------------------------
+    //
+    // CAR stays the anchor even in ball cam.
+    //
+    // Ball cam changes the ORBIT around the car.
+    // It does not simply point the lens straight at the ball.
+    // --------------------------------------------------------
+
+    v064CameraTarget.copy(
+        v064CameraAnchor
+    );
+
+
+    v064CameraTarget.addScaledVector(
+
+        v064CameraDirection,
+
+        ballCamEnabled
+            ? 2.2
+            : 5.0
+    );
+
+
+    v064CameraTarget.addScaledVector(
+
+        v064CameraRight,
+
+        v064CameraFlipSide *
+        0.34
+    );
+
+
+    v064CameraTarget.y +=
+
+        ballCamEnabled
+            ?
+            THREE.MathUtils.clamp(
+
+                (
+                    ball.position.y -
+                    car.position.y
+                ) *
+                0.10,
+
+                -0.15,
+
+                1.25
+            )
+            :
+            0.35;
+
+
+    // --------------------------------------------------------
+    // INITIAL SNAP
+    // --------------------------------------------------------
+
+    if (
+        !cameraInitialised
+    ) {
+
+        camera.position.copy(
+            cameraPositionTarget
+        );
+
+
+        cameraSmoothedLook.copy(
+            v064CameraTarget
+        );
+
+
+        cameraInitialised =
+            true;
+    }
+
+
+    // --------------------------------------------------------
+    // SMOOTH POSITION
+    // --------------------------------------------------------
+
+    const positionBlend =
+        1 -
+        Math.exp(
+            -V064_CAMERA_POSITION_RESPONSE *
+            dt
+        );
+
+
+    const lookBlend =
+        1 -
+        Math.exp(
+            -V064_CAMERA_LOOK_RESPONSE *
+            dt
+        );
+
+
+    camera.position.lerp(
+
+        cameraPositionTarget,
+
+        positionBlend
+    );
+
+
+    cameraSmoothedLook.lerp(
+
+        v064CameraTarget,
+
+        lookBlend
+    );
+
+
+    camera.lookAt(
+        cameraSmoothedLook
+    );
+};
+
+
+// ============================================================
+// RESET CAMERA ORBIT AFTER KICKOFF
+// ============================================================
+
+const v063ResetKickoff =
+    resetKickoff;
+
+
+resetKickoff =
+function () {
+
+    v063ResetKickoff();
+
+
+    ball.visible =
+        true;
+
+
+    ball.material.color.set(
+        0xf4f4f4
+    );
+
+
+    v064WallMode =
+        null;
+
+
+    v064CameraYawInitialised =
+        false;
+
+
+    cameraInitialised =
+        false;
+};
+
+
+// ============================================================
+// GOAL EXPLOSION
+// ============================================================
+
+const v064GoalParticles =
+    [];
+
+
+const v064GoalParticleGeometry =
+    new THREE.SphereGeometry(
+        0.22,
+        6,
+        4
+    );
+
+
+function v064GoalExplosion(
+    team
+) {
+
+    const positiveGoal =
+        team ===
+        "blue";
+
+
+    const x =
+        positiveGoal
+            ? HALF_LENGTH
+            : -HALF_LENGTH;
+
+
+    const colour =
+        team ===
+        "blue"
+            ? 0x45aaff
+            : 0xff8a2b;
+
+
+    for (
+        let i = 0;
+        i < 42;
+        i++
+    ) {
+
+        const material =
+            new THREE.MeshBasicMaterial({
+
+                color:
+                    colour,
+
+                transparent:
+                    true,
+
+                opacity:
+                    1
+            });
+
+
+        const particle =
+            new THREE.Mesh(
+
+                v064GoalParticleGeometry,
+
+                material
+            );
+
+
+        particle.position.set(
+
+            x,
+
+            2.5 +
+            Math.random() *
+            5,
+
+            (
+                Math.random() -
+                0.5
+            ) *
+            GOAL_WIDTH *
+            0.72
+        );
+
+
+        scene.add(
+            particle
+        );
+
+
+        const outward =
+            positiveGoal
+                ? -1
+                : 1;
+
+
+        v064GoalParticles.push({
+
+            mesh:
+                particle,
+
+            velocity:
+                new THREE.Vector3(
+
+                    outward *
+                    (
+                        5 +
+                        Math.random() *
+                        12
+                    ),
+
+                    4 +
+                    Math.random() *
+                    12,
+
+                    (
+                        Math.random() -
+                        0.5
+                    ) *
+                    18
+                ),
+
+            life:
+                0.75 +
+                Math.random() *
+                0.70
+        });
+    }
+}
+
+
+function v064UpdateGoalExplosion(
+    dt
+) {
+
+    for (
+        let i =
+            v064GoalParticles.length -
+            1;
+
+        i >= 0;
+
+        i--
+    ) {
+
+        const particle =
+            v064GoalParticles[i];
+
+
+        particle.life -=
+            dt;
+
+
+        particle.velocity.y -=
+            10 *
+            dt;
+
+
+        particle.mesh.position
+            .addScaledVector(
+
+                particle.velocity,
+
+                dt
+            );
+
+
+        particle.mesh.material.opacity =
+            THREE.MathUtils.clamp(
+                particle.life,
+                0,
+                1
+            );
+
+
+        const scale =
+            1 +
+            (
+                1 -
+                Math.max(
+                    0,
+                    particle.life
+                )
+            ) *
+            1.5;
+
+
+        particle.mesh.scale.setScalar(
+            scale
+        );
+
+
+        if (
+            particle.life <=
+            0
+        ) {
+
+            scene.remove(
+                particle.mesh
+            );
+
+
+            particle.mesh.material.dispose();
+
+
+            v064GoalParticles.splice(
+                i,
+                1
+            );
+        }
+    }
+}
+
+
+// ============================================================
+// GOAL REGISTRATION WRAPPER
+// ============================================================
+
+const v063RegisterGoal =
+    registerGoal;
+
+
+registerGoal =
+function (
+    team
+) {
+
+    if (
+        gameState ===
+            GAME_STATE.CELEBRATION
+        ||
+        gameState ===
+            GAME_STATE.RESULTS
+    ) {
+
+        return;
+    }
+
+
+    // Explosion happens at confirmed score.
+
+    v064GoalExplosion(
+        team
+    );
+
+
+    // Ball vanishes once the score is confirmed.
+
+    ball.visible =
+        false;
+
+
+    v063RegisterGoal(
+        team
+    );
+};
+
+
+// ============================================================
+// FREEPLAY GOAL RESET SAFETY
+// ============================================================
+
+const v063ResetBall =
+    resetBall;
+
+
+resetBall =
+function () {
+
+    v063ResetBall();
+
+
+    ball.visible =
+        true;
+
+
+    ball.material.color.set(
+        0xf4f4f4
+    );
+};
+
+
+// ============================================================
+// GOAL PARTICLES IN MAIN VISUAL UPDATE
+// ============================================================
+//
+// animateBoostPads() is already called every rendered frame,
+// so use it as our lightweight visual-effects hook.
+// ============================================================
+
+const v064AnimateBoostPadsWithRings =
+    animateBoostPads;
+
+
+animateBoostPads =
+function (
+    elapsed
+) {
+
+    v064AnimateBoostPadsWithRings(
+        elapsed
+    );
+
+
+    // game-loop dt isn't passed here, so use the render
+    // frame target for this tiny visual-only effect.
+
+    const preset =
+        GRAPHICS_PRESETS[
+            graphicsPreset
+        ];
+
+
+    v064UpdateGoalExplosion(
+
+        1 /
+        Math.max(
+            30,
+            preset.fps
+        )
+    );
+};
+
+
+// ============================================================
+// FINAL v0.6.4 BOOT CLEANUP
+// ============================================================
+
+ball.visible =
+    true;
+
+
+ball.material.color.set(
+    0xf4f4f4
+);
+
+
+v064CameraYawInitialised =
+    false;
+
+
+cameraInitialised =
+    false;
+
+
+console.log(
+    "BOOSTBALL v0.6.4 — WALL RIDER loaded."
+);
+
+
+// ============================================================
+//
+// BOOSTBALL v0.6.4 — WALL RIDER
+//
+// TEST:
+//
+// 1. Ground steering direction.
+// 2. Quick jump tap vs held jump.
+// 3. Air roll immediately after takeoff.
+// 4. Air roll + second jump.
+// 5. Front/side flip camera.
+// 6. Reverse without camera 180.
+// 7. Ball cam orbit.
+// 8. Drive into curved side wall.
+// 9. Stay on wall without jumping.
+// 10. Jump OFF wall.
+// 11. Ball rolls/bounces up curved edge.
+// 12. Boost pad floating rings.
+// 13. Boost pad floor decals remain while empty.
+// 14. Goal darkens ball.
+// 15. Goal explosion.
+// 16. Ball disappears on score.
+// 17. Overtime golden goal.
+// 18. FPS top-right.
+// 19. Tiny version bottom.
+// 20. THE MICROWAVE DOES NOT ENTER ANOTHER DIMENSION.
+//
 // ============================================================
