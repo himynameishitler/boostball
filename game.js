@@ -25,7 +25,7 @@ import * as THREE from
 // VERSION
 // ============================================================
 
-const GAME_VERSION = "v0.6.4";
+const GAME_VERSION = "v0.6.5";
 const GAME_CODENAME = "TRACTION CONTROL";
 
 
@@ -1237,7 +1237,7 @@ const REVERSE_ACCELERATION = 18;
 const BRAKING = 34;
 
 
-const DRIVE_TOP_SPEED = 29;
+const DRIVE_TOP_SPEED = 34;
 
 const REVERSE_TOP_SPEED = 15;
 
@@ -1257,7 +1257,7 @@ const NORMAL_GRIP = 7;
 const POWERSLIDE_GRIP = 1.15;
 
 
-const COAST_DRAG = 0.18;
+const COAST_DRAG = 0.035;
 
 const POWERED_DRAG = 0.06;
 
@@ -2091,6 +2091,12 @@ const controllerState = {
         0,
 
     steerY:
+        0,
+
+    cameraX:
+        0,
+
+    cameraY:
         0,
 
     throttle:
@@ -3513,6 +3519,21 @@ function shouldPreventKey(
 
 
 // ============================================================
+// v0.6.5 CAMERA LOOK — KEYBOARD
+// ============================================================
+// Arrow keys orbit the camera.
+// Right stick does the same thing on controller.
+// ============================================================
+
+const keyboardCameraLook = {
+    left: false,
+    right: false,
+    up: false,
+    down: false
+};
+
+
+// ============================================================
 // KEY DOWN
 // ============================================================
 
@@ -3590,6 +3611,12 @@ window.addEventListener(
         }
 
 
+        if (key === "arrowleft") keyboardCameraLook.left = true;
+        if (key === "arrowright") keyboardCameraLook.right = true;
+        if (key === "arrowup") keyboardCameraLook.up = true;
+        if (key === "arrowdown") keyboardCameraLook.down = true;
+
+
         keys[key] =
             true;
     }
@@ -3618,6 +3645,12 @@ window.addEventListener(
 
             event.preventDefault();
         }
+
+
+        if (key === "arrowleft") keyboardCameraLook.left = false;
+        if (key === "arrowright") keyboardCameraLook.right = false;
+        if (key === "arrowup") keyboardCameraLook.up = false;
+        if (key === "arrowdown") keyboardCameraLook.down = false;
 
 
         keys[key] =
@@ -4065,7 +4098,7 @@ function updateControllerRebinding(
             continue;
         }
 
-
+        
         if (
             controllerRebindBlockedButtons
                 .has(
@@ -4098,6 +4131,14 @@ function clearControllerGameplayState() {
 
 
     controllerState.steerY =
+        0;
+
+
+    controllerState.cameraX =
+        0;
+
+
+    controllerState.cameraY =
         0;
 
 
@@ -4332,6 +4373,24 @@ function updateController() {
     controllerState.steerY =
         applyDeadzone(
             gamepad.axes[1] || 0
+        );
+
+
+    // --------------------------------------------------------
+    // RIGHT STICK CAMERA
+    // --------------------------------------------------------
+
+    controllerState.cameraX =
+        applyDeadzone(
+            gamepad.axes[2] || 0,
+            0.10
+        );
+
+
+    controllerState.cameraY =
+        applyDeadzone(
+            gamepad.axes[3] || 0,
+            0.10
         );
 
 
@@ -7982,6 +8041,9 @@ function updateGroundDriving(
 
             if (
                 !inputState.boost
+                &&
+                forwardSpeed <=
+                    DRIVE_TOP_SPEED
             ) {
 
                 forwardSpeed =
@@ -8065,7 +8127,7 @@ function updateGroundDriving(
     } else {
 
         const poweredDrag =
-            POWERED_DRAG *
+            0.008 *
             Math.abs(
                 forwardSpeed
             ) *
@@ -8136,7 +8198,8 @@ function updateGroundDriving(
 
 
     carVelocity.z =
-        tempForward.z *
+
+                tempForward.z *
             forwardSpeed
         +
         tempRight.z *
@@ -9411,51 +9474,52 @@ function resolveCarFloorCollision() {
 
 function resolveCarSideWalls() {
 
-    const carRadius =
-        1.45;
-
-
-    const maximumZ =
-        HALF_WIDTH -
-        carRadius;
-
+    // v0.6.5:
+    // WALL RIDER owns grounded wall interaction.
+    // This only catches airborne cars trying to escape.
 
     if (
-        car.position.z >
-        maximumZ
+        typeof v064WallMode !== "undefined"
+        &&
+        v064WallMode
     ) {
-
-        car.position.z =
-            maximumZ;
-
-
-        if (
-            carVelocity.z >
-            0
-        ) {
-
-            carVelocity.z *=
-                -0.35;
-        }
+        return;
     }
 
 
+    const shellLimit =
+        HALF_WIDTH -
+        0.35;
+
+
     if (
-        car.position.z <
-        -maximumZ
+        Math.abs(
+            car.position.z
+        ) >
+        shellLimit
+        &&
+        !grounded
     ) {
 
+        const side =
+            Math.sign(
+                car.position.z
+            ) || 1;
+
+
         car.position.z =
-            -maximumZ;
+            side *
+            shellLimit;
 
 
         if (
-            carVelocity.z <
+            carVelocity.z *
+            side >
             0
         ) {
 
             carVelocity.z *=
-                -0.35;
+                -0.18;
         }
     }
 }
@@ -9517,9 +9581,19 @@ function resolveCarEndWalls() {
         !fitsGoal
     ) {
 
+        if (
+            grounded
+            &&
+            typeof v064WallMode !== "undefined"
+        ) {
+
+            return;
+        }
+
+
         const maximumX =
             HALF_LENGTH -
-            carRadius;
+            0.35;
 
 
         if (
@@ -12546,7 +12620,7 @@ const V064_WALL_GRIP = 18;
 
 const V064_WALL_STEER_SPEED = 2.15;
 
-const V064_WALL_JUMP_IMPULSE = 12.5;
+const V064_WALL_JUMP_IMPULSE = 6.2;
 
 const V064_CAMERA_DISTANCE = 11.8;
 
@@ -14386,7 +14460,7 @@ function v064UpdateWallDriving(
         verticalVelocity =
             Math.max(
                 verticalVelocity,
-                7.5
+                5.2
             );
 
 
@@ -14563,27 +14637,67 @@ function (
             GROUNDED_CAR_HEIGHT;
 
 
+        const curveDifference =
+            desiredY -
+            car.position.y;
+
+
         if (
-            car.position.y <
-            desiredY
+            grounded
+            &&
+            Math.abs(
+                curveDifference
+            ) <
+            2.75
         ) {
 
-            car.position.y =
-                desiredY;
-
-
-            verticalVelocity =
-                Math.max(
-                    verticalVelocity,
-                    Math.abs(
-                        carVelocity.z
-                    ) *
-                    0.40
+            const followStrength =
+                1 -
+                Math.exp(
+                    -24 *
+                    dt
                 );
 
 
-            grounded =
-                true;
+            car.position.y =
+                THREE.MathUtils.lerp(
+                    car.position.y,
+                    desiredY,
+                    followStrength
+                );
+
+
+            const curveProgress =
+                THREE.MathUtils.clamp(
+                    (
+                        V064_WALL_CURVE_RADIUS -
+                        sideDistance
+                    ) /
+                    V064_WALL_CURVE_RADIUS,
+                    0,
+                    1
+                );
+
+
+            const slopeAngle =
+                curveProgress *
+                Math.PI /
+                2;
+
+
+            verticalVelocity =
+                Math.abs(
+                    carVelocity.z
+                ) *
+                Math.sin(
+                    slopeAngle
+                ) *
+                Math.sign(
+                    carVelocity.z *
+                    Math.sign(
+                        car.position.z
+                    )
+                );
 
 
             groundContact =
@@ -14625,27 +14739,67 @@ function (
                 GROUNDED_CAR_HEIGHT;
 
 
+            const curveDifference =
+                desiredY -
+                car.position.y;
+
+
             if (
-                car.position.y <
-                desiredY
+                grounded
+                &&
+                Math.abs(
+                    curveDifference
+                ) <
+                2.75
             ) {
 
-                car.position.y =
-                    desiredY;
-
-
-                verticalVelocity =
-                    Math.max(
-                        verticalVelocity,
-                        Math.abs(
-                            carVelocity.x
-                        ) *
-                        0.40
+                const followStrength =
+                    1 -
+                    Math.exp(
+                        -24 *
+                        dt
                     );
 
 
-                grounded =
-                    true;
+                car.position.y =
+                    THREE.MathUtils.lerp(
+                        car.position.y,
+                        desiredY,
+                        followStrength
+                    );
+
+
+                const curveProgress =
+                    THREE.MathUtils.clamp(
+                        (
+                            V064_WALL_CURVE_RADIUS -
+                            endDistance
+                        ) /
+                        V064_WALL_CURVE_RADIUS,
+                        0,
+                        1
+                    );
+
+
+                const slopeAngle =
+                    curveProgress *
+                    Math.PI /
+                    2;
+
+
+                verticalVelocity =
+                    Math.abs(
+                        carVelocity.x
+                    ) *
+                    Math.sin(
+                        slopeAngle
+                    ) *
+                    Math.sign(
+                        carVelocity.x *
+                        Math.sign(
+                            car.position.x
+                        )
+                    );
 
 
                 groundContact =
@@ -15016,6 +15170,23 @@ let v064CameraFlipForward =
     0;
 
 
+// Free-look orbit. Right stick / arrow keys move these offsets.
+let v065CameraOrbitYaw =
+    0;
+
+let v065CameraOrbitPitch =
+    0;
+
+const V065_CAMERA_YAW_SPEED =
+    2.65;
+
+const V065_CAMERA_PITCH_SPEED =
+    1.75;
+
+const V065_CAMERA_MAX_PITCH =
+    0.62;
+
+
 const v064CameraDirection =
     new THREE.Vector3();
 
@@ -15067,6 +15238,44 @@ function (
 
 
     let desiredYaw;
+
+
+    // --------------------------------------------------------
+    // MANUAL CAMERA ORBIT
+    // --------------------------------------------------------
+
+    const keyboardCameraX =
+        (keyboardCameraLook.right ? 1 : 0) -
+        (keyboardCameraLook.left ? 1 : 0);
+
+    const keyboardCameraY =
+        (keyboardCameraLook.down ? 1 : 0) -
+        (keyboardCameraLook.up ? 1 : 0);
+
+    const cameraInputX =
+        Math.abs(controllerState.cameraX) > 0.01
+            ? controllerState.cameraX
+            : keyboardCameraX;
+
+    const cameraInputY =
+        Math.abs(controllerState.cameraY) > 0.01
+            ? controllerState.cameraY
+            : keyboardCameraY;
+
+    v065CameraOrbitYaw -=
+        cameraInputX *
+        V065_CAMERA_YAW_SPEED *
+        dt;
+
+    v065CameraOrbitPitch =
+        THREE.MathUtils.clamp(
+            v065CameraOrbitPitch +
+                cameraInputY *
+                V065_CAMERA_PITCH_SPEED *
+                dt,
+            -V065_CAMERA_MAX_PITCH,
+            V065_CAMERA_MAX_PITCH
+        );
 
 
     if (
@@ -15175,6 +15384,12 @@ function (
             }
         }
     }
+
+
+    // Manual orbit is relative to whatever the normal camera
+    // wants to follow (car cam OR ball cam).
+    desiredYaw +=
+        v065CameraOrbitYaw;
 
 
     if (
@@ -15351,7 +15566,10 @@ function (
 
 
     cameraPositionTarget.y +=
-        V064_CAMERA_HEIGHT;
+        V064_CAMERA_HEIGHT +
+        Math.sin(v065CameraOrbitPitch) *
+            distance *
+            0.72;
 
 
     cameraPositionTarget.addScaledVector(
@@ -15414,6 +15632,13 @@ function (
             )
             :
             0.35;
+
+
+    // Manual vertical look. Keep the car as the anchor while
+    // allowing the player to look above/below it.
+    v064CameraTarget.y +=
+        Math.sin(v065CameraOrbitPitch) *
+        4.2;
 
 
     // --------------------------------------------------------
@@ -15510,6 +15735,14 @@ function () {
 
     v064CameraYawInitialised =
         false;
+
+
+    v065CameraOrbitYaw =
+        0;
+
+
+    v065CameraOrbitPitch =
+        0;
 
 
     cameraInitialised =
@@ -15862,7 +16095,7 @@ cameraInitialised =
 
 
 console.log(
-    "BOOSTBALL v0.6.4 — WALL RIDER loaded."
+    "BOOSTBALL v0.6.5 — MOMENTUM + FREE LOOK loaded."
 );
 
 
