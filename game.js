@@ -16707,27 +16707,6 @@ boostHud.style.background =
 boostNumber.style.fontSize =
     "36px";
 
-
-const v065UpdateHUD =
-    updateHUD;
-
-updateHUD =
-function () {
-
-    v065UpdateHUD();
-
-    const boostDegrees =
-        THREE.MathUtils.clamp(
-            boostAmount,
-            0,
-            100
-        ) * 3.6;
-
-    boostHud.style.background =
-        `radial-gradient(circle at center, rgba(7,14,24,0.97) 0 62%, transparent 63%), conic-gradient(rgba(255,154,38,0.98) 0deg ${boostDegrees}deg, rgba(255,255,255,0.10) ${boostDegrees}deg 360deg)`;
-};
-
-
 console.log(
     "BOOSTBALL v0.6.6 — ARENA SHELL active."
 );
@@ -16809,13 +16788,19 @@ console.log(
      `;
  }
 
- // Preserve the original HUD updates.
- const v0661PreviousUpdateHUD = updateHUD;
 
- updateHUD = function () {
-     v0661PreviousUpdateHUD();
-     v0661UpdateBoostGauge();
- };
+// BOOSTBALL v0.6.6.1 — HUD UPDATE FIX
+
+// The real HUD function is updateTopScoreboard.
+// Wrap it to refresh the segmented boost gauge.
+
+const v0661PreviousUpdateTopScoreboard =
+    updateTopScoreboard;
+
+updateTopScoreboard = function () {
+    v0661PreviousUpdateTopScoreboard();
+    v0661UpdateBoostGauge();
+};
 
  // Display the new gauge immediately.
  v0661UpdateBoostGauge();
