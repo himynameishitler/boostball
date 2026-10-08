@@ -26,8 +26,8 @@ import * as THREE from
 // VERSION
 // ============================================================
 
-const GAME_VERSION = "v0.6.6";
-const GAME_CODENAME = "ARENA SHELL";
+const GAME_VERSION = "v0.6.6.1";
+const GAME_CODENAME = "PURPLE PROTOTYPE";
 
 
 // ============================================================
@@ -17672,4 +17672,21 @@ updateCar = function (dt) {
 
 console.log(
     "BOOSTBALL v0.6.6.1 — Arena containment loaded."
+);
+
+// ============================================================
+// BOOSTBALL v0.6.6.1 — FINAL VERSION + PAINT
+// ============================================================
+
+// Set the visible version label.
+versionBadge.textContent = "BOOSTBALL v0.6.6.1";
+versionBadge.title = "PURPLE PROTOTYPE";
+
+// Electric purple body and nose.
+body.material.color.setHex(0x9B30FF);
+nose.material.color.setHex(0x9B30FF);
+
+// Confirmation in browser console.
+console.log(
+    "BOOSTBALL v0.6.6.1 — PURPLE PROTOTYPE READY"
 );
