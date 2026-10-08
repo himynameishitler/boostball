@@ -1,3 +1,4 @@
+
 // ============================================================
 // BOOSTBALL v0.6.3 — TRACTION CONTROL
 //
@@ -328,6 +329,7 @@ scene.add(
 const lineMaterial =
     new THREE.MeshBasicMaterial({
         color: 0xffffff,
+
         transparent: true,
         opacity: 0.68
     });
@@ -688,6 +690,7 @@ function createGoal(
                 0.4,
                 GOAL_HEIGHT,
                 GOAL_WIDTH
+
             ),
 
             goalMaterial
@@ -1088,6 +1091,7 @@ addWheel(
 
 addWheel(
     1.35,
+
     -1.25
 );
 
@@ -2288,6 +2292,7 @@ function gamepadHasActivity(
         if (
             Math.abs(
                 gamepad.axes[i]
+
             ) >
             0.20
         ) {
@@ -2688,6 +2693,7 @@ controllerDisplay.innerHTML = `
         fill="rgba(255,255,255,0.07)"
         stroke="rgba(255,255,255,0.25)"
     />
+
 
     <!-- create/options -->
 
@@ -3888,6 +3894,7 @@ function beginKeyboardRebind(
 
 
     controllerNotice =
+
         `Press a key for ${
             keyboardActionLabels[action]
         }`;
@@ -4290,6 +4297,7 @@ function updateController() {
             gamepad.index;
 
 
+
     controllerState.connected =
         true;
 
@@ -4688,6 +4696,7 @@ function updateInputState() {
             "left"
         )
             ? 1
+
             : 0;
 
 
@@ -5487,6 +5496,7 @@ function rebuildMenu() {
                 <div
                     style="
                         display:flex;
+
                         gap:5px;
                     "
                 >
@@ -6287,6 +6297,7 @@ topScoreboard.innerHTML = `
     >
 
         <div
+
             id="topMatchClock"
             style="
                 color:white;
@@ -6687,6 +6698,7 @@ const boostPads = [];
 // v0.6.2 made the player hit them too precisely.
 
 const SMALL_PAD_PICKUP_RADIUS =
+
     4.35;
 
 
@@ -7487,6 +7499,7 @@ function resetBall() {
     ball.position.set(
         0,
         BALL_RADIUS + 0.05,
+
         0
     );
 
@@ -7887,6 +7900,7 @@ function settleCarToGround(
         verticalVelocity <
         0
     ) {
+
 
         verticalVelocity =
             0;
@@ -8289,6 +8303,7 @@ function updateGroundDriving(
         yawChange;
 
 
+
     // --------------------------------------------------------
     // GROUND QUATERNION
     // --------------------------------------------------------
@@ -8687,6 +8702,7 @@ function updateDodge(
     // rotation.
     //
     // It DOES NOT delete translational momentum.
+
     // --------------------------------------------------------
 
     if (
@@ -9087,6 +9103,7 @@ function updateAerialControl(
     // PITCH
     // --------------------------------------------------------
     //
+
     // Stick forward / W:
     // inputState.pitch is negative.
     //
@@ -9487,6 +9504,7 @@ function resolveCarSideWalls() {
         v064WallMode
     ) {
         return;
+
     }
 
 
@@ -10287,6 +10305,7 @@ function resolveBallGoalSides() {
         ) {
 
             ballVelocity.z *=
+
                 -BALL_WALL_BOUNCE;
         }
     }
@@ -10687,6 +10706,7 @@ function resolveCarBallCollision() {
             tempDirection.y *
             impulse *
             0.025;
+
     }
 
 
@@ -11887,6 +11907,7 @@ function updateCamera(
 
         cameraDesiredDirection
             .copy(
+
                 cameraForward
             )
             .multiplyScalar(
@@ -12287,6 +12308,7 @@ function gameLoop(
 
     requestAnimationFrame(
         gameLoop
+
     );
 
 
@@ -12688,6 +12710,7 @@ versionBadge.title =
 versionBadge.style.top =
     "auto";
 
+
 versionBadge.style.left =
     "50%";
 
@@ -13087,6 +13110,7 @@ const v064CurveMaterial =
     new THREE.MeshStandardMaterial({
 
         color:
+
             0x1b6f35,
 
         roughness:
@@ -13487,6 +13511,7 @@ function v064ResolveBallSideCurve() {
 
     const inwardVelocity =
         ballVelocity.dot(
+
             tempDirection
         );
 
@@ -14287,6 +14312,7 @@ function v064UpdateWallDriving(
 
 
     groundContact =
+
         true;
 
 
@@ -15487,6 +15513,7 @@ function (
         )
         .addScaledVector(
             v064CameraRight,
+
             -v064CameraFlipSide
         );
 
@@ -16703,4 +16730,946 @@ function () {
 
 console.log(
     "BOOSTBALL v0.6.6 — ARENA SHELL active."
+);
+
+
+ // ============================================================
+ // BOOSTBALL v0.6.6.1 — UPGRADE PATCH
+ // PART 1 — SEGMENTED BOOST HUD
+ // ============================================================
+
+ const V0661_BOOST_SEGMENTS = 20;
+ const V0661_SEGMENT_ANGLE =
+     360 / V0661_BOOST_SEGMENTS;
+
+ // Remove the old continuous-gauge border.
+ boostHud.style.border = "none";
+ boostHud.style.borderRadius = "50%";
+ boostHud.style.width = "112px";
+ boostHud.style.height = "112px";
+ boostHud.style.boxSizing = "border-box";
+
+ boostNumber.style.fontSize = "36px";
+
+ function v0661UpdateBoostGauge() {
+     const amount = THREE.MathUtils.clamp(
+         boostAmount,
+         0,
+         100
+     );
+
+     const activeSegments = Math.ceil(
+         amount / 5
+     );
+
+     const stops = [];
+
+     for (
+         let i = 0;
+         i < V0661_BOOST_SEGMENTS;
+         i++
+     ) {
+         const start =
+             i * V0661_SEGMENT_ANGLE;
+
+         const segmentEnd =
+             start + V0661_SEGMENT_ANGLE - 3;
+
+         const gapEnd =
+             start + V0661_SEGMENT_ANGLE;
+
+         const lit = i < activeSegments;
+
+         const segmentColour = lit
+             ? "rgba(255,157,40,1)"
+             : "rgba(255,255,255,0.12)";
+
+         const gapColour =
+             "rgba(7,14,24,0.96)";
+
+         stops.push(
+             `${segmentColour} ${start}deg ${segmentEnd}deg`
+         );
+
+         stops.push(
+             `${gapColour} ${segmentEnd}deg ${gapEnd}deg`
+         );
+     }
+
+     boostHud.style.background = `
+         radial-gradient(
+             circle at center,
+             rgba(7,14,24,0.98) 0 61%,
+             transparent 62%
+         ),
+         conic-gradient(
+             from -90deg,
+             ${stops.join(",")}
+         )
+     `;
+ }
+
+ // Preserve the original HUD updates.
+ const v0661PreviousUpdateHUD = updateHUD;
+
+ updateHUD = function () {
+     v0661PreviousUpdateHUD();
+     v0661UpdateBoostGauge();
+ };
+
+ // Display the new gauge immediately.
+ v0661UpdateBoostGauge();
+
+ console.log(
+     "BOOSTBALL v0.6.6.1 — Segmented boost HUD loaded."
+ );
+
+// ============================================================
+// BOOSTBALL v0.6.6.1 — UPGRADE PATCH
+// PART 2 — ROTATION-AWARE CHASSIS FLOOR COLLISION
+// ============================================================
+
+// Approximate the car's physical chassis using a box.
+// Coordinates are relative to the car's local origin.
+//
+// Local +X = forward
+// Local +Y = up
+// Local +Z = right
+
+const V0661_CHASSIS_HALF_LENGTH = 2.20;
+const V0661_CHASSIS_HALF_WIDTH = 1.18;
+
+// The bottom of the body is around local Y = -0.15.
+// The top of the cabin is around local Y = 1.625.
+const V0661_CHASSIS_BOTTOM = -0.15;
+const V0661_CHASSIS_TOP = 1.625;
+
+// Small separation to prevent visual floor flickering.
+const V0661_FLOOR_SKIN = 0.015;
+
+// Reuse vectors to avoid allocations during physics updates.
+const v0661ChassisPoint = new THREE.Vector3();
+const v0661ChassisWorldPoint = new THREE.Vector3();
+
+function v0661GetLowestChassisOffset() {
+    let lowestY = Infinity;
+
+    for (const x of [
+        -V0661_CHASSIS_HALF_LENGTH,
+        V0661_CHASSIS_HALF_LENGTH
+    ]) {
+        for (const y of [
+            V0661_CHASSIS_BOTTOM,
+            V0661_CHASSIS_TOP
+        ]) {
+            for (const z of [
+                -V0661_CHASSIS_HALF_WIDTH,
+                V0661_CHASSIS_HALF_WIDTH
+            ]) {
+                v0661ChassisPoint.set(x, y, z);
+
+                v0661ChassisWorldPoint
+                    .copy(v0661ChassisPoint)
+                    .applyQuaternion(car.quaternion);
+
+                lowestY = Math.min(
+                    lowestY,
+                    v0661ChassisWorldPoint.y
+                );
+            }
+        }
+    }
+
+    return lowestY;
+}
+
+function v0661ResolveChassisFloor() {
+    // During wall driving, the wall-contact solver
+    // remains responsible for positioning the car.
+    // The chassis floor guard is applied to ordinary
+    // ground and aerial motion.
+    if (
+        typeof v064WallMode !== "undefined" &&
+        v064WallMode !== null
+    ) {
+        return;
+    }
+
+    const lowestOffset =
+        v0661GetLowestChassisOffset();
+
+    const minimumCentreHeight =
+        -lowestOffset + V0661_FLOOR_SKIN;
+
+    if (
+        car.position.y >= minimumCentreHeight
+    ) {
+        return;
+    }
+
+    // Lift the chassis just enough to clear the floor.
+    car.position.y = minimumCentreHeight;
+
+    // Stop downward movement on contact.
+    if (verticalVelocity < 0) {
+        verticalVelocity = 0;
+    }
+
+    groundContact = true;
+
+    // Do not automatically count roof or side contact
+    // as a successful wheel landing.
+    const uprightAmount = getCarUprightAmount();
+
+    if (uprightAmount <= 0.42) {
+        grounded = false;
+
+        // Mild scraping resistance.
+        carVelocity.x *= 0.985;
+        carVelocity.z *= 0.985;
+    }
+}
+
+// Keep the original floor collision logic, then apply
+// the new chassis clearance check.
+const v0661PreviousFloorCollision =
+    resolveCarFloorCollision;
+
+resolveCarFloorCollision = function () {
+    v0661PreviousFloorCollision();
+    v0661ResolveChassisFloor();
+};
+
+console.log(
+    "BOOSTBALL v0.6.6.1 — Chassis floor collision loaded."
+);
+
+// ============================================================
+// BOOSTBALL v0.6.6.1 — UPGRADE PATCH
+// PART 3 — CONTINUOUS WALL STEERING
+// ============================================================
+
+// Keep a reference to the original wall-driving physics
+// before the v0.6.6 corner-transition wrapper.
+const v0661BaseWallDriving = v065WallDriving;
+
+// Keep the previous corner-transition wrapper available.
+const v0661PreviousWallDriving = v064UpdateWallDriving;
+
+// The wall heading can now rotate continuously.
+// No +/-85 degree steering clamp.
+
+v064UpdateWallDriving = function (dt) {
+    if (!v064WallMode) {
+        return;
+    }
+
+    // Save the heading before the original solver runs.
+    const previousHeading = v064WallHeading;
+
+    // Run the existing acceleration, braking,
+    // adhesion and wall-contact calculations.
+    v0661BaseWallDriving(dt);
+
+    if (!v064WallMode) {
+        return;
+    }
+
+    // Calculate how far the original solver steered.
+    // Its output is clamped, but its input handling
+    // still provides the intended steering direction.
+    const throttle = inputState.throttle;
+    const reverse = inputState.reverse;
+
+    let wallSpeed;
+
+    if (v064WallMode === "side") {
+        wallSpeed =
+            carVelocity.x * Math.cos(previousHeading) +
+            verticalVelocity * Math.sin(previousHeading);
+    } else {
+        wallSpeed =
+            carVelocity.z * Math.cos(previousHeading) +
+            verticalVelocity * Math.sin(previousHeading);
+    }
+
+    const authority = THREE.MathUtils.clamp(
+        Math.abs(wallSpeed) / 4,
+        0.18,
+        1
+    );
+
+    const steeringSide =
+        v064WallMode === "side"
+            ? -v064WallSide
+            : v064WallSide;
+
+    const steeringDirection =
+        wallSpeed < -0.5 ? -1 : 1;
+
+    const steeringDelta =
+        inputState.steer *
+        V064_WALL_STEER_SPEED *
+        steeringSide *
+        steeringDirection *
+        authority *
+        dt;
+
+    // UNCLAMPED: heading can pass through any angle.
+    v064WallHeading =
+        previousHeading + steeringDelta;
+
+    // Preserve the wall speed after the original
+    // acceleration and braking calculations.
+    const speedMagnitude = Math.hypot(
+        v064WallMode === "side"
+            ? carVelocity.x
+            : carVelocity.z,
+        verticalVelocity
+    );
+
+    const signedSpeed =
+        (
+            wallSpeed < 0 ? -1 : 1
+        ) * speedMagnitude;
+
+    const along =
+        Math.cos(v064WallHeading) * signedSpeed;
+
+    const vertical =
+        Math.sin(v064WallHeading) * signedSpeed;
+
+    if (v064WallMode === "side") {
+        carVelocity.x = along;
+        carVelocity.z = 0;
+    } else {
+        carVelocity.z = along;
+        carVelocity.x = 0;
+    }
+
+    verticalVelocity = vertical;
+
+    // Orient the car using the new heading.
+    v064SetWallOrientation();
+
+    // Keep the v0.6.6 corner transition, but blend
+    // its orientation change instead of immediately
+    // displaying the new wall orientation.
+    const beforeMode = v064WallMode;
+    const beforeQuaternion = car.quaternion.clone();
+
+    // This existing wrapper includes the corner
+    // transition logic. Calling it directly would
+    // repeat the physics, so the transition is
+    // handled below instead.
+
+    const cornerX =
+        HALF_LENGTH - V066_CORNER_RADIUS;
+
+    const cornerZ =
+        HALF_WIDTH - V066_CORNER_RADIUS;
+
+    let changedWall = false;
+
+    if (
+        v064WallMode === "side" &&
+        Math.abs(car.position.x) > cornerX
+    ) {
+        const newSide =
+            Math.sign(car.position.x) || 1;
+
+        const oldSpeed = carVelocity.x;
+
+        v064WallMode = "end";
+        v064WallSide = newSide;
+
+        carVelocity.z =
+            -Math.sign(car.position.z) *
+            Math.abs(oldSpeed);
+
+        carVelocity.x = 0;
+
+        v064WallHeading = Math.atan2(
+            verticalVelocity,
+            carVelocity.z || 0.001
+        );
+
+        changedWall = true;
+    } else if (
+        v064WallMode === "end" &&
+        Math.abs(car.position.z) > cornerZ
+    ) {
+        const newSide =
+            Math.sign(car.position.z) || 1;
+
+        const oldSpeed = carVelocity.z;
+
+        v064WallMode = "side";
+        v064WallSide = newSide;
+
+        carVelocity.x =
+            -Math.sign(car.position.x) *
+            Math.abs(oldSpeed);
+
+        carVelocity.z = 0;
+
+        v064WallHeading = Math.atan2(
+            verticalVelocity,
+            carVelocity.x || 0.001
+        );
+
+        changedWall = true;
+    }
+
+    if (changedWall) {
+        // Blend the visible rotation toward the
+        // new wall orientation.
+        v064SetWallOrientation();
+
+        const targetQuaternion =
+            car.quaternion.clone();
+
+        car.quaternion.copy(beforeQuaternion);
+
+        const blend = 1 - Math.exp(-8 * dt);
+
+        car.quaternion.slerp(
+            targetQuaternion,
+            blend
+        );
+    }
+};
+
+console.log(
+    "BOOSTBALL v0.6.6.1 — Continuous wall steering loaded."
+);
+
+// ============================================================
+// BOOSTBALL v0.6.6.1 — UPGRADE PATCH
+// PART 4 — CAR-RELATIVE 3D CHASE CAMERA
+// ============================================================
+
+// Persistent camera orientation prevents sudden snaps.
+const v0661CameraOrientation = new THREE.Quaternion();
+
+const v0661CameraForward = new THREE.Vector3();
+const v0661CameraUp = new THREE.Vector3();
+const v0661CameraRight = new THREE.Vector3();
+
+const v0661CameraDesiredForward = new THREE.Vector3();
+const v0661CameraDesiredUp = new THREE.Vector3();
+
+const v0661CameraBasis = new THREE.Matrix4();
+const v0661CameraTargetQuaternion = new THREE.Quaternion();
+
+const v0661CameraPosition = new THREE.Vector3();
+const v0661CameraLook = new THREE.Vector3();
+const v0661CameraBallDirection = new THREE.Vector3();
+
+const v0661WorldUp = new THREE.Vector3(0, 1, 0);
+
+let v0661CameraReady = false;
+let v0661OrbitYaw = 0;
+let v0661OrbitPitch = 0;
+
+const V0661_CAMERA_DISTANCE = 11.5;
+const V0661_CAMERA_HEIGHT = 4.2;
+
+function v0661CameraInput(dt) {
+    const keyboardX =
+        (keyboardCameraLook.right ? 1 : 0) -
+        (keyboardCameraLook.left ? 1 : 0);
+
+    const keyboardY =
+        (keyboardCameraLook.down ? 1 : 0) -
+        (keyboardCameraLook.up ? 1 : 0);
+
+    const stickX =
+        Math.abs(controllerState.cameraX) > 0.01
+            ? controllerState.cameraX
+            : keyboardX;
+
+    const stickY =
+        Math.abs(controllerState.cameraY) > 0.01
+            ? controllerState.cameraY
+            : keyboardY;
+
+    v0661OrbitYaw -= stickX * 2.65 * dt;
+    v0661OrbitPitch += stickY * 1.75 * dt;
+
+    v0661OrbitPitch = THREE.MathUtils.clamp(
+        v0661OrbitPitch,
+        -0.75,
+        0.75
+    );
+
+    // Smoothly return behind the car when free-look ends.
+    if (Math.abs(stickX) < 0.01) {
+        v0661OrbitYaw *= Math.exp(-1.7 * dt);
+    }
+
+    if (Math.abs(stickY) < 0.01) {
+        v0661OrbitPitch *= Math.exp(-1.7 * dt);
+    }
+}
+
+updateCamera = function (dt) {
+    v0661CameraInput(dt);
+
+    // Read the actual 3D car axes.
+    getCarForward(v0661CameraDesiredForward);
+    getCarUp(v0661CameraDesiredUp);
+
+    // During flips, keep the camera from instantly
+    // rotating upside down with the chassis.
+    if (dodgeActive) {
+        v0661CameraDesiredUp.lerp(
+            v0661WorldUp,
+            0.85
+        ).normalize();
+    }
+
+    // Ball cam blends the chase direction toward the ball.
+    if (ballCamEnabled && ball.visible) {
+        v0661CameraBallDirection
+            .copy(ball.position)
+            .sub(car.position);
+
+        if (v0661CameraBallDirection.lengthSq() > 0.01) {
+            v0661CameraBallDirection.normalize();
+
+            v0661CameraDesiredForward.lerp(
+                v0661CameraBallDirection,
+                0.72
+            ).normalize();
+        }
+    }
+
+    // Construct an orthogonal camera basis.
+    v0661CameraRight.crossVectors(
+        v0661CameraDesiredForward,
+        v0661CameraDesiredUp
+    );
+
+    if (v0661CameraRight.lengthSq() < 0.0001) {
+        v0661CameraRight.set(0, 0, 1);
+    }
+
+    v0661CameraRight.normalize();
+
+    v0661CameraDesiredUp.crossVectors(
+        v0661CameraRight,
+        v0661CameraDesiredForward
+    ).normalize();
+
+    v0661CameraBasis.makeBasis(
+        v0661CameraDesiredForward,
+        v0661CameraDesiredUp,
+        v0661CameraRight
+    );
+
+    v0661CameraTargetQuaternion.setFromRotationMatrix(
+        v0661CameraBasis
+    );
+
+    if (!v0661CameraReady) {
+        v0661CameraOrientation.copy(
+            v0661CameraTargetQuaternion
+        );
+
+        v0661CameraReady = true;
+    }
+
+    // Smoothly track the car's orientation.
+    const rotationBlend =
+        1 - Math.exp(-5.5 * dt);
+
+    v0661CameraOrientation.slerp(
+        v0661CameraTargetQuaternion,
+        rotationBlend
+    );
+
+    v0661CameraForward
+        .set(1, 0, 0)
+        .applyQuaternion(v0661CameraOrientation);
+
+    v0661CameraUp
+        .set(0, 1, 0)
+        .applyQuaternion(v0661CameraOrientation);
+
+    v0661CameraRight
+        .set(0, 0, 1)
+        .applyQuaternion(v0661CameraOrientation);
+
+    // Apply free-look around the tracked camera frame.
+    const yawRotation = new THREE.Quaternion()
+        .setFromAxisAngle(
+            v0661CameraUp,
+            v0661OrbitYaw
+        );
+
+    v0661CameraForward.applyQuaternion(yawRotation);
+    v0661CameraRight.applyQuaternion(yawRotation);
+
+    const pitchRotation = new THREE.Quaternion()
+        .setFromAxisAngle(
+            v0661CameraRight,
+            v0661OrbitPitch
+        );
+
+    v0661CameraForward.applyQuaternion(pitchRotation);
+    v0661CameraUp.applyQuaternion(pitchRotation);
+
+    const speedFraction = THREE.MathUtils.clamp(
+        getHorizontalSpeed() / BOOST_TOP_SPEED,
+        0,
+        1
+    );
+
+    const distance =
+        V0661_CAMERA_DISTANCE + speedFraction * 1.5;
+
+    // Position the camera behind the car, relative
+    // to its current orientation.
+    v0661CameraPosition
+        .copy(car.position)
+        .addScaledVector(
+            v0661CameraForward,
+            -distance
+        )
+        .addScaledVector(
+            v0661CameraUp,
+            V0661_CAMERA_HEIGHT
+        );
+
+    // Look forward from the car.
+    v0661CameraLook
+        .copy(car.position)
+        .addScaledVector(
+            v0661CameraForward,
+            5
+        )
+        .addScaledVector(
+            v0661CameraUp,
+            1.2
+        );
+
+    if (ballCamEnabled && ball.visible) {
+        v0661CameraLook.lerp(
+            ball.position,
+            0.4
+        );
+    }
+
+    if (!cameraInitialised) {
+        camera.position.copy(v0661CameraPosition);
+        cameraSmoothedLook.copy(v0661CameraLook);
+        cameraInitialised = true;
+    }
+
+    const positionBlend =
+        1 - Math.exp(-7 * dt);
+
+    const lookBlend =
+        1 - Math.exp(-9 * dt);
+
+    camera.position.lerp(
+        v0661CameraPosition,
+        positionBlend
+    );
+
+    cameraSmoothedLook.lerp(
+        v0661CameraLook,
+        lookBlend
+    );
+
+    // Avoid sudden camera roll changes.
+    camera.up.lerp(
+        v0661CameraUp,
+        rotationBlend
+    ).normalize();
+
+    camera.lookAt(cameraSmoothedLook);
+};
+
+console.log(
+    "BOOSTBALL v0.6.6.1 — 3D chase camera loaded."
+);
+
+// ============================================================
+// BOOSTBALL v0.6.6.1 — UPGRADE PATCH
+// PART 5 — ROTATION-AWARE ARENA CONTAINMENT
+// ============================================================
+
+const V0661_WALL_SKIN = 0.04;
+
+const v0661BoundsPoint = new THREE.Vector3();
+
+function v0661GetCarBounds() {
+    const bounds = {
+        minX: Infinity,
+        maxX: -Infinity,
+        minY: Infinity,
+        maxY: -Infinity,
+        minZ: Infinity,
+        maxZ: -Infinity
+    };
+
+    // Use the same chassis box as Part 2.
+    for (const x of [
+        -V0661_CHASSIS_HALF_LENGTH,
+        V0661_CHASSIS_HALF_LENGTH
+    ]) {
+        for (const y of [
+            V0661_CHASSIS_BOTTOM,
+            V0661_CHASSIS_TOP
+        ]) {
+            for (const z of [
+                -V0661_CHASSIS_HALF_WIDTH,
+                V0661_CHASSIS_HALF_WIDTH
+            ]) {
+                v0661BoundsPoint
+                    .set(x, y, z)
+                    .applyQuaternion(car.quaternion);
+
+                bounds.minX = Math.min(
+                    bounds.minX, v0661BoundsPoint.x
+                );
+                bounds.maxX = Math.max(
+                    bounds.maxX, v0661BoundsPoint.x
+                );
+
+                bounds.minY = Math.min(
+                    bounds.minY, v0661BoundsPoint.y
+                );
+                bounds.maxY = Math.max(
+                    bounds.maxY, v0661BoundsPoint.y
+                );
+
+                bounds.minZ = Math.min(
+                    bounds.minZ, v0661BoundsPoint.z
+                );
+                bounds.maxZ = Math.max(
+                    bounds.maxZ, v0661BoundsPoint.z
+                );
+            }
+        }
+    }
+
+    return bounds;
+}
+
+function v0661ContainCar() {
+    const b = v0661GetCarBounds();
+
+    // --------------------------------------------------------
+    // CEILING
+    // --------------------------------------------------------
+
+    const highestPoint =
+        car.position.y + b.maxY;
+
+    if (highestPoint > CEILING_HEIGHT - V0661_WALL_SKIN) {
+        car.position.y -=
+            highestPoint -
+            (CEILING_HEIGHT - V0661_WALL_SKIN);
+
+        if (verticalVelocity > 0) {
+            verticalVelocity *= -0.20;
+        }
+
+        grounded = false;
+    }
+
+    // --------------------------------------------------------
+    // FLOOR
+    // --------------------------------------------------------
+
+    // Part 2 already handles the floor for ordinary
+    // driving and aerial motion. Recheck it after any
+    // ceiling correction.
+    v0661ResolveChassisFloor();
+
+    // Wall-driving cars use their existing wall-adhesion
+    // solver. Avoid pushing their centres off the surface.
+    if (v064WallMode) {
+        return;
+    }
+
+    // --------------------------------------------------------
+    // GOAL OPENING
+    // --------------------------------------------------------
+
+    const worldMinY = car.position.y + b.minY;
+    const worldMaxY = car.position.y + b.maxY;
+
+    const fullyInsideGoalWidth =
+        car.position.z + b.minZ >
+            -GOAL_WIDTH / 2 + V0661_WALL_SKIN &&
+        car.position.z + b.maxZ <
+            GOAL_WIDTH / 2 - V0661_WALL_SKIN;
+
+    const fullyBelowCrossbar =
+        worldMaxY <
+            GOAL_HEIGHT - V0661_WALL_SKIN;
+
+    const insideGoalOpening =
+        fullyInsideGoalWidth &&
+        fullyBelowCrossbar &&
+        worldMinY >= -V0661_WALL_SKIN;
+
+    // --------------------------------------------------------
+    // SIDE WALLS
+    // --------------------------------------------------------
+
+    const sideLimit =
+        HALF_WIDTH - V0661_WALL_SKIN;
+
+    if (car.position.z + b.maxZ > sideLimit) {
+        car.position.z =
+            sideLimit - b.maxZ;
+
+        if (carVelocity.z > 0) {
+            carVelocity.z *= -0.15;
+        }
+    }
+
+    if (car.position.z + b.minZ < -sideLimit) {
+        car.position.z =
+            -sideLimit - b.minZ;
+
+        if (carVelocity.z < 0) {
+            carVelocity.z *= -0.15;
+        }
+    }
+
+    // --------------------------------------------------------
+    // END WALLS AND GOAL TUNNELS
+    // --------------------------------------------------------
+
+    const endLimit =
+        HALF_LENGTH - V0661_WALL_SKIN;
+
+    const goalBackLimit =
+        HALF_LENGTH + GOAL_DEPTH -
+        V0661_WALL_SKIN;
+
+    const allowedX =
+        insideGoalOpening
+            ? goalBackLimit
+            : endLimit;
+
+    if (car.position.x + b.maxX > allowedX) {
+        car.position.x =
+            allowedX - b.maxX;
+
+        if (carVelocity.x > 0) {
+            carVelocity.x *= -0.18;
+        }
+    }
+
+    if (car.position.x + b.minX < -allowedX) {
+        car.position.x =
+            -allowedX - b.minX;
+
+        if (carVelocity.x < 0) {
+            carVelocity.x *= -0.18;
+        }
+    }
+
+    // --------------------------------------------------------
+    // GOAL TUNNEL SIDE WALLS
+    // --------------------------------------------------------
+
+    if (Math.abs(car.position.x) > HALF_LENGTH) {
+        const goalSideLimit =
+            GOAL_WIDTH / 2 - V0661_WALL_SKIN;
+
+        if (
+            car.position.z + b.maxZ >
+            goalSideLimit
+        ) {
+            car.position.z =
+                goalSideLimit - b.maxZ;
+
+            if (carVelocity.z > 0) {
+                carVelocity.z *= -0.18;
+            }
+        }
+
+        if (
+            car.position.z + b.minZ <
+            -goalSideLimit
+        ) {
+            car.position.z =
+                -goalSideLimit - b.minZ;
+
+            if (carVelocity.z < 0) {
+                carVelocity.z *= -0.18;
+            }
+        }
+    }
+
+    // --------------------------------------------------------
+    // ROUNDED CORNERS
+    // --------------------------------------------------------
+
+    const innerX =
+        HALF_LENGTH - V066_CORNER_RADIUS;
+
+    const innerZ =
+        HALF_WIDTH - V066_CORNER_RADIUS;
+
+    const ax = Math.abs(car.position.x);
+    const az = Math.abs(car.position.z);
+
+    if (ax > innerX && az > innerZ) {
+        const dx = ax - innerX;
+        const dz = az - innerZ;
+
+        const distance = Math.hypot(dx, dz);
+
+        // Conservative clearance for the chassis.
+        const cornerLimit =
+            V066_CORNER_RADIUS - 2.4;
+
+        if (distance > cornerLimit) {
+            const nx = dx / distance;
+            const nz = dz / distance;
+
+            const sx = Math.sign(car.position.x) || 1;
+            const sz = Math.sign(car.position.z) || 1;
+
+            car.position.x =
+                sx * (innerX + nx * cornerLimit);
+
+            car.position.z =
+                sz * (innerZ + nz * cornerLimit);
+
+            const outwardSpeed =
+                carVelocity.x * sx * nx +
+                carVelocity.z * sz * nz;
+
+            if (outwardSpeed > 0) {
+                carVelocity.x -=
+                    outwardSpeed * sx * nx;
+
+                carVelocity.z -=
+                    outwardSpeed * sz * nz;
+            }
+        }
+    }
+}
+
+// Wrap the existing updateCar function so the new
+// containment runs after the original physics.
+const v0661PreviousUpdateCar = updateCar;
+
+updateCar = function (dt) {
+    v0661PreviousUpdateCar(dt);
+    v0661ContainCar();
+};
+
+console.log(
+    "BOOSTBALL v0.6.6.1 — Arena containment loaded."
 );
