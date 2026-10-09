@@ -17675,3 +17675,482 @@ nose.material.color.setHex(0x9B30FF);
 console.log(
     "BOOSTBALL v0.6.6.1 — PURPLE PROTOTYPE READY"
 );
+
+// ============================================================
+// BOOSTBALL v0.6.6.2
+// PART 1 / 8 — VERSION AND TUNING
+// ============================================================
+
+versionBadge.textContent = "BOOSTBALL v0.6.6.2";
+versionBadge.title = "WALL CONTROL REBUILD";
+
+const BB662 = {
+    cornerRadius: V066_CORNER_RADIUS,
+    wallClearance: GROUNDED_CAR_HEIGHT,
+    steeringSpeed: V064_WALL_STEER_SPEED,
+    steeringInvert: -1,
+    rotationResponse: 9,
+    minimumCameraHeight: 6.5,
+    cameraExtraHeight: 2.5
+};
+
+const bb662Wall = {
+    active: false,
+    speed: 0,
+    pitch: 0,
+    tangentSign: 1,
+    previousMode: null
+};
+
+console.log("BOOSTBALL v0.6.6.2 — Part 1 loaded");
+
+// ============================================================
+// PART 2 / 8 — ROUNDED WALL GEOMETRY
+// ============================================================
+
+function bb662WallGeometry(x, z) {
+    const radius =
+        BB662.cornerRadius - BB662.wallClearance;
+
+    const cx =
+        HALF_LENGTH - BB662.cornerRadius;
+
+    const cz =
+        HALF_WIDTH - BB662.cornerRadius;
+
+    const sx = Math.sign(x) || 1;
+    const sz = Math.sign(z) || 1;
+
+    const ax = Math.abs(x);
+    const az = Math.abs(z);
+
+    let px, pz, nx, nz;
+
+    if (ax > cx && az > cz) {
+        // Quarter-circle corner.
+        const dx = ax - cx;
+        const dz = az - cz;
+        const length = Math.max(
+            0.0001,
+            Math.hypot(dx, dz)
+        );
+
+        nx = sx * dx / length;
+        nz = sz * dz / length;
+
+        px = sx * cx + nx * radius;
+        pz = sz * cz + nz * radius;
+    } else if (
+        HALF_WIDTH - az <
+        HALF_LENGTH - ax
+    ) {
+        // Side wall.
+        nx = 0;
+        nz = sz;
+
+        px = THREE.MathUtils.clamp(
+            x, -cx, cx
+        );
+        pz = sz * (cz + radius);
+    } else {
+        // End wall.
+        nx = sx;
+        nz = 0;
+
+        px = sx * (cx + radius);
+        pz = THREE.MathUtils.clamp(
+            z, -cz, cz
+        );
+    }
+
+    return {
+        x: px,
+        z: pz,
+        nx,
+        nz,
+        tx: -nz,
+        tz: nx
+    };
+}
+
+console.log("BOOSTBALL v0.6.6.2 — Part 2 loaded");
+
+// ============================================================
+// PART 3 / 8 — WALL STATE INITIALISATION
+// ============================================================
+
+function bb662BeginWall() {
+    const g = bb662WallGeometry(
+        car.position.x,
+        car.position.z
+    );
+
+    const tangentSpeed =
+        carVelocity.x * g.tx +
+        carVelocity.z * g.tz;
+
+    bb662Wall.speed = tangentSpeed;
+
+    // Preserve the current upward/downward trajectory.
+    bb662Wall.pitch = Math.atan2(
+        verticalVelocity,
+        Math.abs(tangentSpeed) + 0.001
+    );
+
+    bb662Wall.tangentSign =
+        tangentSpeed < 0 ? -1 : 1;
+
+    bb662Wall.active = true;
+    bb662Wall.previousMode = v064WallMode;
+}
+
+function bb662EndWall() {
+    bb662Wall.active = false;
+    bb662Wall.previousMode = null;
+}
+
+console.log("BOOSTBALL v0.6.6.2 — Part 3 loaded");
+
+// ============================================================
+// PART 4 / 8 — WALL STEERING
+// ============================================================
+
+function bb662SteerWall(dt, g) {
+    const speed = bb662Wall.speed;
+
+    const authority = THREE.MathUtils.clamp(
+        Math.abs(speed) / 4,
+        0.18,
+        1
+    );
+
+    // Reverse the steering relationship from v0.6.6.1.
+    const sideSign =
+        Math.abs(g.nz) >= Math.abs(g.nx)
+            ? Math.sign(g.nz)
+            : -Math.sign(g.nx);
+
+    const reverseSign = speed < -0.5 ? -1 : 1;
+
+    bb662Wall.pitch +=
+        inputState.steer *
+        BB662.steeringSpeed *
+        BB662.steeringInvert *
+        sideSign *
+        reverseSign *
+        authority *
+        dt;
+
+    // Avoid unstable pitch exactly at +/-90 degrees.
+    bb662Wall.pitch = THREE.MathUtils.clamp(
+        bb662Wall.pitch,
+        -Math.PI * 0.49,
+        Math.PI * 0.49
+    );
+}
+
+console.log("BOOSTBALL v0.6.6.2 — Part 4 loaded");
+
+// ============================================================
+// PART 5 / 8 — WALL SPEED
+// ============================================================
+
+function bb662UpdateWallSpeed(dt) {
+    let speed = bb662Wall.speed;
+
+    const throttle = inputState.throttle;
+    const reverse = inputState.reverse;
+
+    if (throttle > 0.01) {
+        speed += ACCELERATION * throttle * dt;
+        speed = Math.min(
+            speed,
+            inputState.boost
+                ? BOOST_TOP_SPEED
+                : DRIVE_TOP_SPEED
+        );
+    }
+
+    if (reverse > 0.01) {
+        if (speed > 0.5) {
+            speed = moveToward(
+                speed,
+                0,
+                BRAKING * reverse * dt
+            );
+        } else {
+            speed -=
+                REVERSE_ACCELERATION * reverse * dt;
+
+            speed = Math.max(
+                speed,
+                -REVERSE_TOP_SPEED
+            );
+        }
+    }
+
+    if (throttle < 0.01 && reverse < 0.01) {
+        speed = moveToward(
+            speed,
+            0,
+            COAST_DRAG *
+                Math.max(1, Math.abs(speed)) *
+                dt
+        );
+    }
+
+    if (inputState.boost && boostAmount > 0) {
+        speed += BOOST_ACCELERATION * dt;
+
+        boostAmount = Math.max(
+            0,
+            boostAmount - BOOST_USAGE * dt
+        );
+    }
+
+    bb662Wall.speed = THREE.MathUtils.clamp(
+        speed,
+        -REVERSE_TOP_SPEED,
+        ABSOLUTE_SPEED_LIMIT
+    );
+}
+
+console.log("BOOSTBALL v0.6.6.2 — Part 5 loaded");
+
+// ============================================================
+// PART 6 / 8 — WALL MOVEMENT AND ROTATION
+// ============================================================
+
+const bb662Forward = new THREE.Vector3();
+const bb662Up = new THREE.Vector3();
+const bb662Right = new THREE.Vector3();
+const bb662Matrix = new THREE.Matrix4();
+const bb662TargetRotation = new THREE.Quaternion();
+
+function bb662MoveOnWall(dt) {
+    const before = bb662WallGeometry(
+        car.position.x,
+        car.position.z
+    );
+
+    bb662UpdateWallSpeed(dt);
+    bb662SteerWall(dt, before);
+
+    const direction = Math.sign(
+        bb662Wall.speed || bb662Wall.tangentSign
+    );
+
+    const horizontalSpeed =
+        Math.abs(bb662Wall.speed) *
+        Math.cos(bb662Wall.pitch);
+
+    const climbSpeed =
+        Math.abs(bb662Wall.speed) *
+        Math.sin(bb662Wall.pitch);
+
+    const vx =
+        before.tx * direction * horizontalSpeed;
+
+    const vz =
+        before.tz * direction * horizontalSpeed;
+
+    // Move along the rounded arena perimeter.
+    const predictedX = car.position.x + vx * dt;
+    const predictedZ = car.position.z + vz * dt;
+
+    const after = bb662WallGeometry(
+        predictedX,
+        predictedZ
+    );
+
+    car.position.x = after.x;
+    car.position.z = after.z;
+
+    car.position.y = THREE.MathUtils.clamp(
+        car.position.y + climbSpeed * dt,
+        GROUNDED_CAR_HEIGHT,
+        WALL_HEIGHT - 1.2
+    );
+
+    carVelocity.x =
+        after.tx * direction * horizontalSpeed;
+
+    carVelocity.z =
+        after.tz * direction * horizontalSpeed;
+
+    verticalVelocity = climbSpeed;
+
+    // Wall inward normal becomes the car's up axis.
+    bb662Up.set(-after.nx, 0, -after.nz);
+
+    bb662Forward.set(
+        after.tx * direction * Math.cos(bb662Wall.pitch),
+        Math.sin(bb662Wall.pitch),
+        after.tz * direction * Math.cos(bb662Wall.pitch)
+    ).normalize();
+
+    bb662Right.crossVectors(
+        bb662Forward,
+        bb662Up
+    ).normalize();
+
+    bb662Up.crossVectors(
+        bb662Right,
+        bb662Forward
+    ).normalize();
+
+    bb662Matrix.makeBasis(
+        bb662Forward,
+        bb662Up,
+        bb662Right
+    );
+
+    bb662TargetRotation.setFromRotationMatrix(
+        bb662Matrix
+    );
+
+    car.quaternion.slerp(
+        bb662TargetRotation,
+        1 - Math.exp(-BB662.rotationResponse * dt)
+    );
+
+    // Maintain the original wall-state flags.
+    grounded = true;
+    groundContact = true;
+
+    // Track the nearest straight-wall type for
+    // compatibility with existing game systems.
+    if (Math.abs(after.nz) >= Math.abs(after.nx)) {
+        v064WallMode = "side";
+        v064WallSide = Math.sign(after.nz) || 1;
+        v064WallHeading = Math.atan2(
+            bb662Forward.y,
+            bb662Forward.x || 0.001
+        );
+    } else {
+        v064WallMode = "end";
+        v064WallSide = Math.sign(after.nx) || 1;
+        v064WallHeading = Math.atan2(
+            bb662Forward.y,
+            bb662Forward.z || 0.001
+        );
+    }
+}
+
+console.log("BOOSTBALL v0.6.6.2 — Part 6 loaded");
+
+// ============================================================
+// PART 7 / 8 — CHASE CAMERA HEIGHT FIX
+// ============================================================
+
+const bb662PreviousCamera = updateCamera;
+
+updateCamera = function (dt) {
+    bb662PreviousCamera(dt);
+
+    // Raise the camera relative to the car.
+    const minimumY =
+        car.position.y + BB662.minimumCameraHeight;
+
+    const desiredY = Math.max(
+        minimumY,
+        camera.position.y + BB662.cameraExtraHeight
+    );
+
+    // Small controlled lift instead of an abrupt snap.
+    camera.position.y = THREE.MathUtils.lerp(
+        camera.position.y,
+        desiredY,
+        1 - Math.exp(-6 * dt)
+    );
+
+    // Keep looking at the existing smoothed target.
+    camera.lookAt(cameraSmoothedLook);
+};
+
+console.log("BOOSTBALL v0.6.6.2 — Part 7 loaded");
+
+// ============================================================
+// PART 8 / 8 — INTEGRATION
+// ============================================================
+
+const bb662PreviousUpdateCar = updateCar;
+
+function bb662WallJump() {
+    const g = bb662WallGeometry(
+        car.position.x,
+        car.position.z
+    );
+
+    // Detach from the surface.
+    v064WallMode = null;
+    bb662EndWall();
+
+    grounded = false;
+    groundContact = false;
+
+    firstJumpUsed = true;
+    secondJumpUsed = false;
+    jumpHeldTime = 0;
+
+    v064WallDetachTimer = 0.20;
+
+    // Jump away from the wall.
+    carVelocity.x =
+        -g.nx * V064_WALL_JUMP_IMPULSE;
+
+    carVelocity.z =
+        -g.nz * V064_WALL_JUMP_IMPULSE;
+
+    verticalVelocity = Math.max(
+        verticalVelocity,
+        5.2
+    );
+
+    car.position.x -= g.nx * 0.08;
+    car.position.z -= g.nz * 0.08;
+}
+
+updateCar = function (dt) {
+    if (v064WallMode) {
+        if (!bb662Wall.active) {
+            bb662BeginWall();
+        }
+
+        if (inputState.jumpPressed) {
+            bb662WallJump();
+            return;
+        }
+
+        if (v064WallDetachTimer > 0) {
+            v064WallDetachTimer = Math.max(
+                0,
+                v064WallDetachTimer - dt
+            );
+        }
+
+        bb662MoveOnWall(dt);
+        return;
+    }
+
+    if (bb662Wall.active) {
+        bb662EndWall();
+    }
+
+    // Preserve existing ground and aerial physics.
+    bb662PreviousUpdateCar(dt);
+
+    // Initialise if the original physics entered a wall.
+    if (v064WallMode && !bb662Wall.active) {
+        bb662BeginWall();
+    }
+};
+
+// Keep the existing purple prototype appearance.
+body.material.color.setHex(0x9B30FF);
+nose.material.color.setHex(0x9B30FF);
+
+console.log(
+    "BOOSTBALL v0.6.6.2 — WALL CONTROL REBUILD READY"
+);
+
