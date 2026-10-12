@@ -18420,7 +18420,7 @@ console.log("BOOSTBALL v0.7.0 — online 1v1 client loaded");
     if(bbOnlinePlaying&&bbOnlineActive&&connecting){connecting=false;if(menuOpen)toggleMenu(false);hide();}
     if(root.style.display==='none'&&!bbOnlinePlaying&&bbOnlineActive&&/opponent left/i.test(status)){el('uiRoom').textContent=bbOnlineRoom||'------';show('lobby');}
   });observer.observe(bbStatus,{childList:true,characterData:true,subtree:true});
-    
+    })();
 /* BOOSTBALL v0.7.3 — LANDING DEBUGGER */
 
 const bb73PositionBefore = new THREE.Vector3();
