@@ -26,7 +26,7 @@ import * as THREE from
 // VERSION
 // ============================================================
 
-const GAME_VERSION = "v0.7.0";
+const GAME_VERSION = "v0.7.2";
 const GAME_CODENAME = "PURPLE PROTOTYPE";
 
 
@@ -18330,108 +18330,96 @@ updatePhysics = function (dt) {
 console.log("BOOSTBALL v0.7.0 — online 1v1 client loaded");
 
 
+
 // ============================================================
-// BOOSTBALL v0.7.0 — FULL-SCREEN HOME / MODE / LOBBY UI
-// Uses existing multiplayer buttons and server protocol.
+// BOOSTBALL v0.7.2 — ARENA MENU + GARAGE
 // ============================================================
-(function bbInstallMainUI() {
-    bbOnlinePanel.style.display = 'none';
-    const style = document.createElement('style');
-    style.textContent = `
-      #bbMainUI { position:fixed; inset:0; z-index:200; color:#fff; font-family:Arial,Helvetica,sans-serif; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse at 78% 15%,rgba(111,48,255,.34),transparent 48%),linear-gradient(120deg,rgba(5,9,23,.97),rgba(11,19,39,.90)); }
-      #bbMainUI * {box-sizing:border-box}
-      #bbMainUI .bb-shell {width:min(940px,calc(100vw - 32px));min-height:440px;display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:center}
-      #bbMainUI .bb-logo {font-size:clamp(40px,6vw,78px);font-weight:1000;letter-spacing:-4px;line-height:.98;text-shadow:0 5px 32px #643bff99}
-      #bbMainUI .bb-logo span {color:#b28aff}
-      #bbMainUI .bb-sub {letter-spacing:3px;color:#a9b8d7;font-size:12px;margin-top:16px}
-      #bbMainUI .bb-panel {border:1px solid #7a69c85c;border-radius:22px;padding:26px;background:linear-gradient(145deg,#151e39f2,#0b1124f2);box-shadow:0 20px 70px #0009}
-      #bbMainUI h2 {font-size:26px;margin:0 0 8px}
-      #bbMainUI p {color:#aebcda;line-height:1.5;font-size:14px;margin:0 0 20px}
-      #bbMainUI button {font:700 15px Arial;cursor:pointer;border:1px solid #777cbb55;border-radius:11px;background:#202d4a;color:#fff;padding:14px 17px;transition:background .15s,transform .15s;text-align:left}
-      #bbMainUI button:hover {background:#364878;transform:translateY(-1px)}
-      #bbMainUI button:focus-visible,#bbMainUI input:focus-visible {outline:3px solid #c7b1ff;outline-offset:2px}
-      #bbMainUI .bb-primary {background:linear-gradient(100deg,#7651e8,#466eea);border-color:#a18dff}
-      #bbMainUI .bb-primary:hover {background:linear-gradient(100deg,#8b6aff,#6083ff)}
-      #bbMainUI .bb-buttons {display:grid;gap:10px}
-      #bbMainUI .bb-back {margin-top:16px;background:transparent;border:0;padding:8px 0;color:#b4c0da;font-size:13px}
-      #bbMainUI input {width:100%;padding:15px;border-radius:10px;background:#0b142b;color:#fff;border:1px solid #6678a0;font-size:21px;font-weight:bold;letter-spacing:6px;text-align:center;text-transform:uppercase;margin:0 0 12px}
-      #bbMainUI .bb-code {font-size:clamp(29px,4vw,43px);letter-spacing:8px;font-weight:900;text-align:center;padding:18px;border:1px dashed #9c85ff;border-radius:12px;margin:12px 0 16px;color:#dacbff}
-      #bbMainUI .bb-spinner {width:44px;height:44px;border:4px solid #8b84c944;border-top-color:#b9a0ff;border-radius:50%;animation:bbSpin .85s linear infinite;margin:14px auto 24px}
-      #bbMainUI .bb-status {font-size:13px;color:#b7c6e3;min-height:22px;overflow-wrap:anywhere}
-      #bbMainUI .bb-hidden {display:none!important}
-      #bbMainUI .bb-tag {font-size:12px;color:#bdaeff;letter-spacing:2px;font-weight:bold;margin-bottom:12px}
-      @keyframes bbSpin {to{transform:rotate(360deg)}}
-      @media(max-width:700px) {#bbMainUI .bb-shell{grid-template-columns:1fr;gap:25px;padding:28px 0}#bbMainUI .bb-panel{padding:20px}#bbMainUI .bb-logo{font-size:48px}#bbMainUI{overflow:auto;align-items:flex-start}}
-    `;
-    document.head.appendChild(style);
-    const root = document.createElement('div');
-    root.id = 'bbMainUI';
-    root.innerHTML = `
-      <div class="bb-shell">
-        <div><div class="bb-tag">THE NEXT GENERATION OF CAR SOCCER</div><div class="bb-logo">BOOST<span>BALL</span></div><div class="bb-sub">VERSION 0.7.0 · MULTIPLAYER BETA</div></div>
-        <section class="bb-panel">
-          <div data-bb-screen="home"><h2>Welcome to the arena.</h2><p>Start your engines. Your next match is one click away.</p><div class="bb-buttons"><button class="bb-primary" id="bbUIPlay">▶ PLAY</button><button id="bbUISettings">⚙ SETTINGS</button></div></div>
-          <div class="bb-hidden" data-bb-screen="modes"><h2>Choose your mode</h2><p>Play solo or challenge a friend online.</p><div class="bb-buttons"><button class="bb-primary" id="bbUIFreeplay">FREEPLAY <small> · SOLO</small></button><button id="bbUIOnline">ONLINE 1v1 <small> · ROOM CODES</small></button></div><button class="bb-back" data-bb-back="home">← BACK</button></div>
-          <div class="bb-hidden" data-bb-screen="online"><h2>Online multiplayer</h2><p>Create a private room, or join someone using their six-character code.</p><div class="bb-buttons"><button class="bb-primary" id="bbUICreate">＋ CREATE ROOM</button></div><div style="margin:19px 0 9px;color:#aebcda;font-size:12px">JOIN EXISTING ROOM</div><input id="bbUICode" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false"/><div class="bb-buttons"><button id="bbUIJoin">JOIN ROOM →</button></div><div class="bb-status" id="bbUIInputError" style="margin-top:10px"></div><button class="bb-back" data-bb-back="modes">← BACK</button></div>
-          <div class="bb-hidden" data-bb-screen="loading"><h2>Connecting…</h2><div class="bb-spinner"></div><p style="text-align:center">Waking up the server and joining your room.</p><div class="bb-status" id="bbUILoadStatus" role="status" aria-live="polite">Connecting to server…</div><button class="bb-back" id="bbUICancel">← CANCEL</button></div>
-          <div class="bb-hidden" data-bb-screen="lobby"><h2>Waiting for opponent</h2><p>Share this code with your friend. The match begins when they join.</p><div class="bb-code" id="bbUIDisplayCode">------</div><div class="bb-buttons"><button class="bb-primary" id="bbUICopy">COPY ROOM CODE</button></div><div class="bb-status" id="bbUILobbyStatus" style="margin-top:16px" role="status" aria-live="polite">Waiting for player 2…</div><button class="bb-back" id="bbUILeave">← LEAVE ROOM</button></div>
-        </section>
-      </div>`;
-    document.body.appendChild(root);
-    const el = id => root.querySelector('#' + id);
-    let screen = 'home';
-    let connecting = false;
-    function show(name) {
-        screen = name;
-        root.style.display = 'flex';
-        root.querySelectorAll('[data-bb-screen]').forEach(node => node.classList.toggle('bb-hidden',node.dataset.bbScreen !== name));
-    }
-    function hide() {root.style.display = 'none';}
-    function disconnect() { bbLeaveButton.click(); connecting=false; }
-    el('bbUIPlay').onclick = () => show('modes');
-    el('bbUISettings').onclick = () => {hide();toggleMenu(true);};
-    el('bbUIFreeplay').onclick = () => {disconnect();hide();if(menuOpen)toggleMenu(false);};
-    el('bbUIOnline').onclick = () => show('online');
-    root.querySelectorAll('[data-bb-back]').forEach(b => b.onclick=()=>show(b.dataset.bbBack));
-    el('bbUICreate').onclick = () => {connecting=true;show('loading');bbOnlinePanel.querySelector('#bbCreateRoom').click();};
-    el('bbUIJoin').onclick = () => {
-        const code=el('bbUICode').value.trim().toUpperCase();
-        if(!/^[A-Z2-9]{6}$/.test(code)){el('bbUIInputError').textContent='Enter a valid six-character room code.';return;}
-        el('bbUIInputError').textContent='';bbRoomInput.value=code;connecting=true;show('loading');bbOnlinePanel.querySelector('#bbJoinRoom').click();
-    };
-    el('bbUICode').addEventListener('keydown',e=>{if(e.key==='Enter')el('bbUIJoin').click();});
-    el('bbUICancel').onclick = () => {disconnect();show('online');};
-    el('bbUILeave').onclick = () => {disconnect();show('online');};
-    el('bbUICopy').onclick = async () => {
-        const code=bbOnlineRoom||el('bbUIDisplayCode').textContent;
-        try {await navigator.clipboard.writeText(code);el('bbUICopy').textContent='✓ COPIED!';}
-        catch {el('bbUILobbyStatus').textContent='Select and copy the code above.';}
-    };
-    const observer=new MutationObserver(()=>{
-        const status=bbStatus.textContent||'';
-        if(screen==='loading') {
-            el('bbUILoadStatus').textContent=status;
-            if(bbOnlineActive && bbOnlineRoom) {
-                el('bbUIDisplayCode').textContent=bbOnlineRoom;
-                el('bbUICopy').textContent='COPY ROOM CODE';
-                show('lobby');
-            } else if(/error|disconnected|could not|invalid|not found|full/i.test(status)) {
-                connecting=false;el('bbUIInputError').textContent=status;show('online');
-            }
-        }
-        if(screen==='lobby')el('bbUILobbyStatus').textContent=status;
-        if(bbOnlinePlaying && bbOnlineActive && connecting){connecting=false;if(menuOpen)toggleMenu(false);hide();}
-        if(root.style.display==='none' && !bbOnlinePlaying && bbOnlineActive && /opponent left/i.test(status)) {
-            el('bbUIDisplayCode').textContent=bbOnlineRoom||'------';show('lobby');
-        }
+(function installBoostballGarageUI(){
+  bbOnlinePanel.style.display='none';
+  const css=document.createElement('style');
+  css.textContent=`
+  #bbFront{position:fixed;inset:0;z-index:250;color:white;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(90deg,rgba(3,9,23,.98) 0%,rgba(4,11,27,.93) 38%,rgba(8,16,36,.78) 100%);overflow:auto}
+  #bbFront *{box-sizing:border-box}#bbFront button{cursor:pointer;color:inherit;font:inherit}
+  #bbFront .top{display:flex;align-items:center;justify-content:space-between;padding:25px 4vw;border-bottom:1px solid #ffffff1b}
+  #bbFront .logo{font-size:30px;font-weight:1000;letter-spacing:-1.5px}#bbFront .logo b{color:#a888ff}
+  #bbFront .meta{font-size:11px;letter-spacing:2px;color:#abb7d3}
+  #bbFront .layout{display:grid;grid-template-columns:minmax(270px,420px) 1fr;gap:4vw;padding:6vh 5vw 5vh;min-height:72vh}
+  #bbFront .eyebrow{color:#a88cff;letter-spacing:3px;font-size:12px;font-weight:800}
+  #bbFront h1{font-size:clamp(40px,5vw,70px);line-height:.98;letter-spacing:-2px;margin:16px 0 14px}#bbFront p{color:#b3bfd8;line-height:1.55;font-size:14px;max-width:450px}
+  #bbFront .nav{display:grid;gap:9px;margin-top:32px;max-width:370px}
+  #bbFront .nav button,#bbFront .action{padding:17px 19px;background:linear-gradient(90deg,#1d2947,#151f38);border:1px solid #6079a866;border-left:4px solid #6d86c1;text-align:left;font-weight:900;letter-spacing:1.2px;border-radius:5px;transition:transform .14s,background .14s}
+  #bbFront .nav button:hover,#bbFront .action:hover{background:#374a77;transform:translateX(4px)}
+  #bbFront .nav .primary,#bbFront .action.primary{background:linear-gradient(100deg,#7350d8,#395dd5);border-left-color:#c2acff}
+  #bbFront .stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:320px;background:radial-gradient(ellipse at 50% 66%,#7548e738,transparent 55%);border:1px solid #ffffff13;border-radius:14px;overflow:hidden}
+  #bbFront .stage:after{content:'';position:absolute;bottom:13%;width:76%;height:3px;background:linear-gradient(90deg,transparent,#967bff,transparent);box-shadow:0 0 35px #a28aff}
+  #bbFront .showcar{width:min(80%,450px);height:190px;position:relative;filter:drop-shadow(0 20px 22px #000b);animation:bbFloat 4s ease-in-out infinite}
+  #bbFront .showcar .body{position:absolute;left:6%;top:44%;width:88%;height:33%;background:linear-gradient(170deg,#fff5,var(--car,#168cff) 30%,#071a36);border-radius:35% 40% 16% 18%;border:2px solid #ffffff44;transform:skewX(-9deg)}
+  #bbFront .showcar .roof{position:absolute;left:28%;top:25%;width:42%;height:26%;background:linear-gradient(140deg,#5d7fa5,#0c1831 70%);clip-path:polygon(18% 0,78% 0,100% 100%,0 100%);border-top:3px solid #adc6ee}
+  #bbFront .showcar .wheel{position:absolute;top:66%;width:19%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#78849c 0 18%,#111a2d 19% 43%,#080b13 44%);border:5px solid #111;box-shadow:0 0 0 2px #6c7b92}
+  #bbFront .showcar .wheel.left{left:19%}#bbFront .showcar .wheel.right{right:17%}
+  #bbFront .showcar .light{position:absolute;top:52%;right:5%;width:8%;height:9%;background:#d9f9ff;border-radius:6px;box-shadow:0 0 18px #a6eaff}
+  #bbFront .stage-caption{position:absolute;bottom:12px;left:20px;font-size:11px;color:#adb8d6;letter-spacing:2px}
+  #bbFront .screen{display:none}#bbFront .screen.active{display:block}
+  #bbFront .actions{display:grid;gap:10px;margin-top:24px;max-width:390px}#bbFront .action{width:100%}
+  #bbFront input{background:#0c1529;border:1px solid #8296c2;color:#fff;border-radius:6px;padding:16px;font-size:21px;letter-spacing:5px;width:100%;text-transform:uppercase}
+  #bbFront .swatches{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 20px}#bbFront .swatch{height:45px;width:45px;border:3px solid #ffffff30;border-radius:8px;transition:transform .15s}#bbFront .swatch:hover{transform:scale(1.1)}#bbFront .swatch.selected{border-color:white;box-shadow:0 0 0 3px #8e78ff}
+  #bbFront .pill{padding:8px 14px;border:1px solid #62749d;background:#192741;border-radius:5px;font-weight:800;margin:8px 8px 0 0}#bbFront .pill.selected{background:#6045b7;border-color:#ae96ff}
+  #bbFront .room{font-size:42px;letter-spacing:8px;font-weight:900;padding:15px 0;color:#cfbdff}#bbFront .status{font-size:13px;color:#b8c6e3;min-height:24px;overflow-wrap:anywhere;margin:14px 0}
+  #bbFront .spinner{width:42px;height:42px;border:4px solid #7c68b54d;border-top-color:#bca5ff;border-radius:50%;animation:bbSpin .85s linear infinite;margin:22px 0}
+  #bbFront .back{background:none;border:0;color:#c3cde3;padding:14px 0;margin-top:14px;font-weight:800}
+  #bbFront button:focus-visible,#bbFront input:focus-visible{outline:3px solid #bda7ff;outline-offset:3px}
+  @keyframes bbFloat{50%{transform:translateY(-9px)}}@keyframes bbSpin{to{transform:rotate(360deg)}}
+  @media(max-width:780px){#bbFront .layout{grid-template-columns:1fr;padding:30px 5vw;gap:16px}#bbFront .stage{min-height:240px}#bbFront .top{padding:16px 5vw}#bbFront .logo{font-size:24px}#bbFront .meta{font-size:9px}}
+  `;document.head.appendChild(css);
+  const root=document.createElement('div');root.id='bbFront';root.innerHTML=`
+  <header class="top"><div class="logo">BOOST<b>BALL</b></div><div class="meta">v0.7.2 · MULTIPLAYER BETA</div></header>
+  <div class="layout"><main>
+    <section class="screen active" data-screen="home"><div class="eyebrow">WELCOME TO THE ARENA</div><h1>READY<br>TO ROLL?</h1><p>Hit the pitch, challenge a friend, or customise your ride.</p><div class="nav"><button class="primary" id="uiPlay">▶ &nbsp; PLAY</button><button id="uiGarage">◈ &nbsp; GARAGE</button><button id="uiSettings">⚙ &nbsp; SETTINGS</button></div></section>
+    <section class="screen" data-screen="modes"><div class="eyebrow">PLAY</div><h1>CHOOSE<br>A MODE</h1><div class="actions"><button class="action primary" id="uiFree">FREEPLAY</button><button class="action" id="uiOnline">ONLINE 1v1 · PRIVATE ROOM</button></div><button class="back" data-back="home">← BACK</button></section>
+    <section class="screen" data-screen="online"><div class="eyebrow">ONLINE 1v1</div><h1>PRIVATE<br>MATCH</h1><div class="actions"><button class="action primary" id="uiCreate">＋ CREATE ROOM</button><p>OR ENTER A ROOM CODE</p><input id="uiCode" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false"><button class="action" id="uiJoin">JOIN ROOM →</button></div><div class="status" id="uiError"></div><button class="back" data-back="modes">← BACK</button></section>
+    <section class="screen" data-screen="loading"><div class="eyebrow">MATCHMAKING</div><h1>CONNECTING</h1><div class="spinner"></div><p>Connecting to the Boostball server. Free hosting may take a minute to wake up.</p><div class="status" id="uiLoadStatus">Connecting…</div><button class="back" id="uiCancel">← CANCEL</button></section>
+    <section class="screen" data-screen="lobby"><div class="eyebrow">PRIVATE MATCH</div><h1>WAITING<br>FOR RIVAL</h1><p>Share your room code with a friend.</p><div class="room" id="uiRoom">------</div><button class="action primary" id="uiCopy">COPY ROOM CODE</button><div class="status" id="uiLobbyStatus">Waiting for opponent…</div><button class="back" id="uiLeave">← LEAVE ROOM</button></section>
+    <section class="screen" data-screen="garage"><div class="eyebrow">CUSTOMISATION</div><h1>YOUR<br>GARAGE</h1><p>Choose your car's primary colour. Changes are saved on this device.</p><div class="eyebrow">BODY PAINT</div><div class="swatches" id="uiSwatches"></div><div class="eyebrow">FINISH</div><div id="uiFinishes"><button class="pill selected" data-finish="gloss">GLOSS</button><button class="pill" data-finish="matte">MATTE</button><button class="pill" data-finish="metallic">METALLIC</button></div><div class="status" id="uiGarageStatus">Your custom car is ready.</div><button class="back" data-back="home">← BACK TO MAIN MENU</button></section>
+  </main><aside class="stage"><div class="showcar" id="uiCarPreview"><div class="roof"></div><div class="body"></div><div class="wheel left"></div><div class="wheel right"></div><div class="light"></div></div><div class="stage-caption" id="uiStageCaption">BOOSTBALL · GARAGE PREVIEW</div></aside></div>`;
+  document.body.appendChild(root);
+  const el=id=>root.querySelector('#'+id);let screen='home',connecting=false;
+  const palette=[['Sky Blue','#168cff'],['Violet','#874dff'],['Crimson','#ef365a'],['Sunset','#ff7a16'],['Emerald','#1fd6a1'],['Gold','#ffc247'],['White','#e5edff'],['Pink','#ff66d3']];
+  const storage='boostball-garage-v1';let custom={color:'#168cff',finish:'gloss'};
+  try{const saved=JSON.parse(localStorage.getItem(storage));if(saved&&palette.some(c=>c[1]===saved.color)&&['gloss','matte','metallic'].includes(saved.finish)){custom=saved;}}catch{}
+  const paintParts=[body,nose];const originalColors=paintParts.map(mesh=>mesh.material.color.clone());
+  paintParts.forEach(mesh=>{mesh.material=mesh.material.clone();});
+  function applyPaint(){
+    const color=new THREE.Color(custom.color);
+    paintParts.forEach((mesh,i)=>{
+      mesh.material.color.copy(color).multiplyScalar(i===0?1:.75);
+      mesh.material.roughness=custom.finish==='matte'?.92:custom.finish==='metallic'?.19:.36;
+      mesh.material.metalness=custom.finish==='metallic'?.76:.20;
     });
-    observer.observe(bbStatus,{childList:true,characterData:true,subtree:true});
-    // Always make the menu accessible after joining, without blocking game keys.
-    window.addEventListener('keydown',e=>{
-        if(e.key==='Escape' && root.style.display==='none' && !menuOpen) {
-            if(bbOnlineActive){el('bbUIDisplayCode').textContent=bbOnlineRoom||'------';show('lobby');}
-            else show('home');
-        }
-    });
-    show('home');
+    el('uiCarPreview').style.setProperty('--car',custom.color);
+    root.querySelectorAll('[data-color]').forEach(b=>b.classList.toggle('selected',b.dataset.color===custom.color));
+    root.querySelectorAll('[data-finish]').forEach(b=>b.classList.toggle('selected',b.dataset.finish===custom.finish));
+    try{localStorage.setItem(storage,JSON.stringify(custom));}catch{}
+  }
+  palette.forEach(([name,hex])=>{const b=document.createElement('button');b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.dataset.color=hex;b.style.background=hex;b.onclick=()=>{custom.color=hex;applyPaint();el('uiGarageStatus').textContent=name+' paint equipped.';};el('uiSwatches').appendChild(b);});
+  root.querySelectorAll('[data-finish]').forEach(b=>b.onclick=()=>{custom.finish=b.dataset.finish;applyPaint();el('uiGarageStatus').textContent=custom.finish.toUpperCase()+' finish equipped.';});
+  applyPaint();
+  function show(name){screen=name;root.style.display='block';root.querySelectorAll('[data-screen]').forEach(s=>s.classList.toggle('active',s.dataset.screen===name));el('uiStageCaption').textContent=name==='garage'?'YOUR CAR · CUSTOMISE YOUR LOOK':'BOOSTBALL · '+name.toUpperCase();}
+  function hide(){root.style.display='none';}
+  function disconnect(){bbLeaveButton.click();connecting=false;}
+  el('uiPlay').onclick=()=>show('modes');el('uiGarage').onclick=()=>show('garage');el('uiSettings').onclick=()=>{hide();toggleMenu(true);};
+  el('uiFree').onclick=()=>{disconnect();hide();if(menuOpen)toggleMenu(false);};
+  el('uiOnline').onclick=()=>show('online');root.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>show(b.dataset.back));
+  el('uiCreate').onclick=()=>{connecting=true;show('loading');bbOnlinePanel.querySelector('#bbCreateRoom').click();};
+  el('uiJoin').onclick=()=>{const code=el('uiCode').value.trim().toUpperCase();if(!/^[A-Z2-9]{6}$/.test(code)){el('uiError').textContent='Enter a valid six-character room code.';return;}el('uiError').textContent='';bbRoomInput.value=code;connecting=true;show('loading');bbOnlinePanel.querySelector('#bbJoinRoom').click();};
+  el('uiCode').addEventListener('keydown',e=>{if(e.key==='Enter')el('uiJoin').click();});
+  el('uiCancel').onclick=()=>{disconnect();show('online');};el('uiLeave').onclick=()=>{disconnect();show('online');};
+  el('uiCopy').onclick=async()=>{const code=bbOnlineRoom||el('uiRoom').textContent;try{await navigator.clipboard.writeText(code);el('uiCopy').textContent='✓ COPIED';}catch{el('uiLobbyStatus').textContent='Select and copy the code above.';}};
+  const observer=new MutationObserver(()=>{const status=bbStatus.textContent||'';
+    if(screen==='loading'){el('uiLoadStatus').textContent=status;if(bbOnlineActive&&bbOnlineRoom){el('uiRoom').textContent=bbOnlineRoom;el('uiCopy').textContent='COPY ROOM CODE';show('lobby');}else if(/error|disconnected|could not|invalid|not found|full/i.test(status)){connecting=false;el('uiError').textContent=status;show('online');}}
+    if(screen==='lobby')el('uiLobbyStatus').textContent=status;
+    if(bbOnlinePlaying&&bbOnlineActive&&connecting){connecting=false;if(menuOpen)toggleMenu(false);hide();}
+    if(root.style.display==='none'&&!bbOnlinePlaying&&bbOnlineActive&&/opponent left/i.test(status)){el('uiRoom').textContent=bbOnlineRoom||'------';show('lobby');}
+  });observer.observe(bbStatus,{childList:true,characterData:true,subtree:true});
+  window.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.style.display==='none'&&!menuOpen){if(bbOnlineActive){el('uiRoom').textContent=bbOnlineRoom||'------';show('lobby');}else show('home');}});
+  show('home');
 })();
