@@ -266,8 +266,8 @@ scene.add(
 // The field is genuinely larger.
 // ============================================================
 
-const FIELD_LENGTH = 220;
-const FIELD_WIDTH = 132;
+const FIELD_LENGTH = 260;
+const FIELD_WIDTH = 156;
 
 const HALF_LENGTH =
     FIELD_LENGTH / 2;
@@ -16090,7 +16090,7 @@ console.log(
 // ============================================================
 
 const V066_CORNER_RADIUS =
-    12;
+    28;
 
 
 // ------------------------------------------------------------
