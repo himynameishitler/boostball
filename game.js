@@ -18307,10 +18307,7 @@ bbLeaveButton.onclick = () => {
 // server controls the ball, goals and clock. No duplicate ball physics.
 const bbOfflinePhysics = updatePhysics;
 updatePhysics = function (dt) {
-    if (!bbOnlineActive || !bbOnlinePlaying) {
-    bbOfflinePhysics(dt);
-    return;
-}
+    if (!bbOnlineActive || !bbOnlinePlaying) { bbOfflinePhysics(dt); return; }
     if (bbOnlinePlaying) {
         updateCar(dt);
         updateBoostPads(dt);
@@ -18331,3 +18328,110 @@ updatePhysics = function (dt) {
     }
 };
 console.log("BOOSTBALL v0.7.0 — online 1v1 client loaded");
+
+
+// ============================================================
+// BOOSTBALL v0.7.0 — FULL-SCREEN HOME / MODE / LOBBY UI
+// Uses existing multiplayer buttons and server protocol.
+// ============================================================
+(function bbInstallMainUI() {
+    bbOnlinePanel.style.display = 'none';
+    const style = document.createElement('style');
+    style.textContent = `
+      #bbMainUI { position:fixed; inset:0; z-index:200; color:#fff; font-family:Arial,Helvetica,sans-serif; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse at 78% 15%,rgba(111,48,255,.34),transparent 48%),linear-gradient(120deg,rgba(5,9,23,.97),rgba(11,19,39,.90)); }
+      #bbMainUI * {box-sizing:border-box}
+      #bbMainUI .bb-shell {width:min(940px,calc(100vw - 32px));min-height:440px;display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:center}
+      #bbMainUI .bb-logo {font-size:clamp(40px,6vw,78px);font-weight:1000;letter-spacing:-4px;line-height:.98;text-shadow:0 5px 32px #643bff99}
+      #bbMainUI .bb-logo span {color:#b28aff}
+      #bbMainUI .bb-sub {letter-spacing:3px;color:#a9b8d7;font-size:12px;margin-top:16px}
+      #bbMainUI .bb-panel {border:1px solid #7a69c85c;border-radius:22px;padding:26px;background:linear-gradient(145deg,#151e39f2,#0b1124f2);box-shadow:0 20px 70px #0009}
+      #bbMainUI h2 {font-size:26px;margin:0 0 8px}
+      #bbMainUI p {color:#aebcda;line-height:1.5;font-size:14px;margin:0 0 20px}
+      #bbMainUI button {font:700 15px Arial;cursor:pointer;border:1px solid #777cbb55;border-radius:11px;background:#202d4a;color:#fff;padding:14px 17px;transition:background .15s,transform .15s;text-align:left}
+      #bbMainUI button:hover {background:#364878;transform:translateY(-1px)}
+      #bbMainUI button:focus-visible,#bbMainUI input:focus-visible {outline:3px solid #c7b1ff;outline-offset:2px}
+      #bbMainUI .bb-primary {background:linear-gradient(100deg,#7651e8,#466eea);border-color:#a18dff}
+      #bbMainUI .bb-primary:hover {background:linear-gradient(100deg,#8b6aff,#6083ff)}
+      #bbMainUI .bb-buttons {display:grid;gap:10px}
+      #bbMainUI .bb-back {margin-top:16px;background:transparent;border:0;padding:8px 0;color:#b4c0da;font-size:13px}
+      #bbMainUI input {width:100%;padding:15px;border-radius:10px;background:#0b142b;color:#fff;border:1px solid #6678a0;font-size:21px;font-weight:bold;letter-spacing:6px;text-align:center;text-transform:uppercase;margin:0 0 12px}
+      #bbMainUI .bb-code {font-size:clamp(29px,4vw,43px);letter-spacing:8px;font-weight:900;text-align:center;padding:18px;border:1px dashed #9c85ff;border-radius:12px;margin:12px 0 16px;color:#dacbff}
+      #bbMainUI .bb-spinner {width:44px;height:44px;border:4px solid #8b84c944;border-top-color:#b9a0ff;border-radius:50%;animation:bbSpin .85s linear infinite;margin:14px auto 24px}
+      #bbMainUI .bb-status {font-size:13px;color:#b7c6e3;min-height:22px;overflow-wrap:anywhere}
+      #bbMainUI .bb-hidden {display:none!important}
+      #bbMainUI .bb-tag {font-size:12px;color:#bdaeff;letter-spacing:2px;font-weight:bold;margin-bottom:12px}
+      @keyframes bbSpin {to{transform:rotate(360deg)}}
+      @media(max-width:700px) {#bbMainUI .bb-shell{grid-template-columns:1fr;gap:25px;padding:28px 0}#bbMainUI .bb-panel{padding:20px}#bbMainUI .bb-logo{font-size:48px}#bbMainUI{overflow:auto;align-items:flex-start}}
+    `;
+    document.head.appendChild(style);
+    const root = document.createElement('div');
+    root.id = 'bbMainUI';
+    root.innerHTML = `
+      <div class="bb-shell">
+        <div><div class="bb-tag">THE NEXT GENERATION OF CAR SOCCER</div><div class="bb-logo">BOOST<span>BALL</span></div><div class="bb-sub">VERSION 0.7.0 · MULTIPLAYER BETA</div></div>
+        <section class="bb-panel">
+          <div data-bb-screen="home"><h2>Welcome to the arena.</h2><p>Start your engines. Your next match is one click away.</p><div class="bb-buttons"><button class="bb-primary" id="bbUIPlay">▶ PLAY</button><button id="bbUISettings">⚙ SETTINGS</button></div></div>
+          <div class="bb-hidden" data-bb-screen="modes"><h2>Choose your mode</h2><p>Play solo or challenge a friend online.</p><div class="bb-buttons"><button class="bb-primary" id="bbUIFreeplay">FREEPLAY <small> · SOLO</small></button><button id="bbUIOnline">ONLINE 1v1 <small> · ROOM CODES</small></button></div><button class="bb-back" data-bb-back="home">← BACK</button></div>
+          <div class="bb-hidden" data-bb-screen="online"><h2>Online multiplayer</h2><p>Create a private room, or join someone using their six-character code.</p><div class="bb-buttons"><button class="bb-primary" id="bbUICreate">＋ CREATE ROOM</button></div><div style="margin:19px 0 9px;color:#aebcda;font-size:12px">JOIN EXISTING ROOM</div><input id="bbUICode" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false"/><div class="bb-buttons"><button id="bbUIJoin">JOIN ROOM →</button></div><div class="bb-status" id="bbUIInputError" style="margin-top:10px"></div><button class="bb-back" data-bb-back="modes">← BACK</button></div>
+          <div class="bb-hidden" data-bb-screen="loading"><h2>Connecting…</h2><div class="bb-spinner"></div><p style="text-align:center">Waking up the server and joining your room.</p><div class="bb-status" id="bbUILoadStatus" role="status" aria-live="polite">Connecting to server…</div><button class="bb-back" id="bbUICancel">← CANCEL</button></div>
+          <div class="bb-hidden" data-bb-screen="lobby"><h2>Waiting for opponent</h2><p>Share this code with your friend. The match begins when they join.</p><div class="bb-code" id="bbUIDisplayCode">------</div><div class="bb-buttons"><button class="bb-primary" id="bbUICopy">COPY ROOM CODE</button></div><div class="bb-status" id="bbUILobbyStatus" style="margin-top:16px" role="status" aria-live="polite">Waiting for player 2…</div><button class="bb-back" id="bbUILeave">← LEAVE ROOM</button></div>
+        </section>
+      </div>`;
+    document.body.appendChild(root);
+    const el = id => root.querySelector('#' + id);
+    let screen = 'home';
+    let connecting = false;
+    function show(name) {
+        screen = name;
+        root.style.display = 'flex';
+        root.querySelectorAll('[data-bb-screen]').forEach(node => node.classList.toggle('bb-hidden',node.dataset.bbScreen !== name));
+    }
+    function hide() {root.style.display = 'none';}
+    function disconnect() { bbLeaveButton.click(); connecting=false; }
+    el('bbUIPlay').onclick = () => show('modes');
+    el('bbUISettings').onclick = () => {hide();toggleMenu(true);};
+    el('bbUIFreeplay').onclick = () => {disconnect();hide();if(menuOpen)toggleMenu(false);};
+    el('bbUIOnline').onclick = () => show('online');
+    root.querySelectorAll('[data-bb-back]').forEach(b => b.onclick=()=>show(b.dataset.bbBack));
+    el('bbUICreate').onclick = () => {connecting=true;show('loading');bbOnlinePanel.querySelector('#bbCreateRoom').click();};
+    el('bbUIJoin').onclick = () => {
+        const code=el('bbUICode').value.trim().toUpperCase();
+        if(!/^[A-Z2-9]{6}$/.test(code)){el('bbUIInputError').textContent='Enter a valid six-character room code.';return;}
+        el('bbUIInputError').textContent='';bbRoomInput.value=code;connecting=true;show('loading');bbOnlinePanel.querySelector('#bbJoinRoom').click();
+    };
+    el('bbUICode').addEventListener('keydown',e=>{if(e.key==='Enter')el('bbUIJoin').click();});
+    el('bbUICancel').onclick = () => {disconnect();show('online');};
+    el('bbUILeave').onclick = () => {disconnect();show('online');};
+    el('bbUICopy').onclick = async () => {
+        const code=bbOnlineRoom||el('bbUIDisplayCode').textContent;
+        try {await navigator.clipboard.writeText(code);el('bbUICopy').textContent='✓ COPIED!';}
+        catch {el('bbUILobbyStatus').textContent='Select and copy the code above.';}
+    };
+    const observer=new MutationObserver(()=>{
+        const status=bbStatus.textContent||'';
+        if(screen==='loading') {
+            el('bbUILoadStatus').textContent=status;
+            if(bbOnlineActive && bbOnlineRoom) {
+                el('bbUIDisplayCode').textContent=bbOnlineRoom;
+                el('bbUICopy').textContent='COPY ROOM CODE';
+                show('lobby');
+            } else if(/error|disconnected|could not|invalid|not found|full/i.test(status)) {
+                connecting=false;el('bbUIInputError').textContent=status;show('online');
+            }
+        }
+        if(screen==='lobby')el('bbUILobbyStatus').textContent=status;
+        if(bbOnlinePlaying && bbOnlineActive && connecting){connecting=false;if(menuOpen)toggleMenu(false);hide();}
+        if(root.style.display==='none' && !bbOnlinePlaying && bbOnlineActive && /opponent left/i.test(status)) {
+            el('bbUIDisplayCode').textContent=bbOnlineRoom||'------';show('lobby');
+        }
+    });
+    observer.observe(bbStatus,{childList:true,characterData:true,subtree:true});
+    // Always make the menu accessible after joining, without blocking game keys.
+    window.addEventListener('keydown',e=>{
+        if(e.key==='Escape' && root.style.display==='none' && !menuOpen) {
+            if(bbOnlineActive){el('bbUIDisplayCode').textContent=bbOnlineRoom||'------';show('lobby');}
+            else show('home');
+        }
+    });
+    show('home');
+})();
