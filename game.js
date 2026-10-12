@@ -18421,302 +18421,66 @@ console.log("BOOSTBALL v0.7.0 — online 1v1 client loaded");
     if(root.style.display==='none'&&!bbOnlinePlaying&&bbOnlineActive&&/opponent left/i.test(status)){el('uiRoom').textContent=bbOnlineRoom||'------';show('lobby');}
   });observer.observe(bbStatus,{childList:true,characterData:true,subtree:true});
     
-/* BOOSTBALL v0.7.3 — PART 1: ARENA GEOMETRY */
+/* BOOSTBALL v0.7.3 — LANDING DEBUGGER */
 
-const BB73_CUT = 28;
-const BB73_CURVE = 9;
-const BB73_SEGMENTS = 12;
+const bb73PositionBefore = new THREE.Vector3();
+const bb73PositionAfter = new THREE.Vector3();
 
-// Clockwise octagonal perimeter, viewed from above.
-const BB73_POINTS = [
-    [-HALF_LENGTH + BB73_CUT, -HALF_WIDTH],
-    [ HALF_LENGTH - BB73_CUT, -HALF_WIDTH],
-    [ HALF_LENGTH, -HALF_WIDTH + BB73_CUT],
-    [ HALF_LENGTH,  HALF_WIDTH - BB73_CUT],
-    [ HALF_LENGTH - BB73_CUT, HALF_WIDTH],
-    [-HALF_LENGTH + BB73_CUT, HALF_WIDTH],
-    [-HALF_LENGTH, HALF_WIDTH - BB73_CUT],
-    [-HALF_LENGTH, -HALF_WIDTH + BB73_CUT]
-];
+let bb73LastSnapReport = 0;
 
-// Hide the old rectangular and rounded wall visuals.
-// This does not change their physics.
-scene.traverse(object => {
-    if (
-        object.isMesh &&
-        (object.material === wallMaterial ||
-         object.material === v066CornerMaterial)
-    ) {
-        object.visible = false;
-    }
-});
-
-const bb73WallMaterial =
-    new THREE.MeshStandardMaterial({
-        color: 0x7db5db,
-        transparent: true,
-        opacity: 0.26,
-        roughness: 0.55,
-        metalness: 0.12,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-
-function bb73Profile(t) {
-    // Inward offset and height for the wall cross-section.
-    if (t <= BB73_SEGMENTS) {
-        const a = (t / BB73_SEGMENTS) * Math.PI / 2;
-        return {
-            inward: BB73_CURVE * (1 - Math.sin(a)),
-            y: BB73_CURVE * (1 - Math.cos(a))
-        };
-    }
-
-    if (t === BB73_SEGMENTS + 1) {
-        return {
-            inward: 0,
-            y: CEILING_HEIGHT - BB73_CURVE
-        };
-    }
-
-    const a =
-        ((t - BB73_SEGMENTS - 1) / BB73_SEGMENTS) *
-        Math.PI / 2;
-
-    return {
-        inward: BB73_CURVE * (1 - Math.cos(a)),
-        y: CEILING_HEIGHT -
-            BB73_CURVE * (1 - Math.sin(a))
-    };
-}
-
-function bb73CreateWall(a, b) {
-    const dx = b[0] - a[0];
-    const dz = b[1] - a[1];
-    const length = Math.hypot(dx, dz);
-
-    // Inward normal for clockwise perimeter.
-    const nx = -dz / length;
-    const nz = dx / length;
-
-    const positions = [];
-    const indices = [];
-    const profileCount = BB73_SEGMENTS * 2 + 2;
-
-    for (let end = 0; end <= 1; end++) {
-        const x = end ? b[0] : a[0];
-        const z = end ? b[1] : a[1];
-
-        for (let i = 0; i < profileCount; i++) {
-            const p = bb73Profile(i);
-
-            positions.push(
-                x + nx * p.inward,
-                p.y,
-                z + nz * p.inward
-            );
-        }
-    }
-
-    for (let i = 0; i < profileCount - 1; i++) {
-        const j = i + profileCount;
-
-        indices.push(i, i + 1, j);
-        indices.push(i + 1, j + 1, j);
-    }
-
-    const geometry = new THREE.BufferGeometry();
-
-    geometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(positions, 3)
-    );
-
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
-    const mesh = new THREE.Mesh(
-        geometry,
-        bb73WallMaterial
-    );
-
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-
-    return mesh;
-}
-
-const bb73Walls = [];
-
-for (let i = 0; i < BB73_POINTS.length; i++) {
-    const next = (i + 1) % BB73_POINTS.length;
-
-    bb73Walls.push(
-        bb73CreateWall(
-            BB73_POINTS[i],
-            BB73_POINTS[next]
-        )
-    );
-}
-
-// Hide the old flat ceiling visual.
-v066Ceiling.visible = false;
-
-// Smaller central roof panel between the upper curves.
-const bb73Roof = new THREE.Mesh(
-    new THREE.PlaneGeometry(
-        FIELD_LENGTH - BB73_CUT * 2,
-        FIELD_WIDTH - BB73_CUT * 2
-    ),
-    new THREE.MeshStandardMaterial({
-        color: 0x779cbd,
-        transparent: true,
-        opacity: 0.12,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    })
-);
-
-bb73Roof.rotation.x = Math.PI / 2;
-bb73Roof.position.y = CEILING_HEIGHT;
-bb73Roof.receiveShadow = true;
-scene.add(bb73Roof);
-
-console.log("Boostball v0.7.3 arena visuals loaded");
-
-/* BOOSTBALL v0.7.3 — PART 2: CORNER COLLISIONS */
-
-// Each diagonal corner is a line between two points.
-// The playable region lies on the inward side.
-
-const BB73_CORNER_EDGES = [
-    [1, 2],
-    [3, 4],
-    [5, 6],
-    [7, 0]
-];
-
-function bb73ResolveCorners(position, velocity, radius, bounce) {
-    for (const [ia, ib] of BB73_CORNER_EDGES) {
-        const a = BB73_POINTS[ia];
-        const b = BB73_POINTS[ib];
-
-        const dx = b[0] - a[0];
-        const dz = b[1] - a[1];
-        const length = Math.hypot(dx, dz);
-
-        const nx = -dz / length;
-        const nz = dx / length;
-
-        const distance =
-            (position.x - a[0]) * nx +
-            (position.z - a[1]) * nz;
-
-        if (distance >= radius) continue;
-
-        const correction = radius - distance;
-
-        position.x += nx * correction;
-        position.z += nz * correction;
-
-        const inwardSpeed =
-            velocity.x * nx +
-            velocity.z * nz;
-
-        if (inwardSpeed < 0) {
-            velocity.x -=
-                (1 + bounce) * inwardSpeed * nx;
-
-            velocity.z -=
-                (1 + bounce) * inwardSpeed * nz;
-        }
-    }
-}
-
-// Add a safety boundary after existing ball physics.
-const bb73PreviousUpdateBall = updateBall;
-
-updateBall = function(dt) {
-    bb73PreviousUpdateBall(dt);
-
-    bb73ResolveCorners(
-        ball.position,
-        ballVelocity,
-        BALL_RADIUS,
-        0.72
-    );
-};
-
-// Preserve existing wall-driving behaviour for now.
-const bb73PreviousUpdateCar = updateCar;
+const bb73OriginalUpdateCar = updateCar;
 
 updateCar = function(dt) {
-    bb73PreviousUpdateCar(dt);
+    bb73PositionBefore.copy(car.position);
 
-    if (!v064WallMode) {
-        bb73ResolveCorners(
-            car.position,
-            carVelocity,
-            GROUNDED_CAR_HEIGHT,
-            0.05
-        );
+    const wasGrounded = grounded;
+    const wasOnWall = !!v064WallMode;
+
+    bb73OriginalUpdateCar(dt);
+
+    bb73PositionAfter.copy(car.position);
+
+    const moved = bb73PositionBefore.distanceTo(
+        bb73PositionAfter
+    );
+
+    const expectedMovement =
+        Math.hypot(
+            carVelocity.x,
+            carVelocity.z,
+            verticalVelocity
+        ) * Math.max(dt, 0);
+
+    const suspiciousMovement =
+        moved > Math.max(3, expectedMovement * 3 + 2);
+
+    const justLanded = !wasGrounded && grounded;
+
+    if (
+        (suspiciousMovement || justLanded) &&
+        performance.now() - bb73LastSnapReport > 250
+    ) {
+        bb73LastSnapReport = performance.now();
+
+        console.log("[BOOSTBALL PHYSICS DEBUG]", {
+            moved: moved.toFixed(2),
+            expectedMovement:
+                expectedMovement.toFixed(2),
+            suspiciousMovement,
+            justLanded,
+            wasOnWall,
+            wallMode: v064WallMode,
+            grounded,
+            groundContact,
+            positionBefore:
+                bb73PositionBefore.toArray(),
+            positionAfter:
+                bb73PositionAfter.toArray(),
+            verticalVelocity,
+            dodgeActive
+        });
     }
 };
 
-console.log("Boostball v0.7.3 corner collisions loaded");
+console.log("Boostball landing debugger enabled");
 
-/* BOOSTBALL v0.7.3 — PART 3: LIGHTING */
-
-sun.shadow.mapSize.set(2048, 2048);
-
-sun.shadow.camera.left = -195;
-sun.shadow.camera.right = 195;
-sun.shadow.camera.top = 150;
-sun.shadow.camera.bottom = -150;
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 350;
-
-sun.shadow.bias = -0.00015;
-sun.shadow.normalBias = 0.025;
-sun.shadow.radius = 2;
-
-sun.shadow.camera.updateProjectionMatrix();
-
-// Stadium shell should receive lighting,
-// but not block the entire field from sunlight.
-for (const wall of bb73Walls) {
-    wall.castShadow = false;
-}
-
-bb73Roof.castShadow = false;
-
-// Keep the floor able to receive car/ball shadows.
-field.receiveShadow =
-    GRAPHICS_PRESETS[graphicsPreset].shadows;
-
-// Preserve shadows whenever the graphics preset changes.
-const bb73PreviousApplyGraphicsPreset =
-    applyGraphicsPreset;
-
-applyGraphicsPreset = function() {
-    bb73PreviousApplyGraphicsPreset();
-
-    const enabled =
-        GRAPHICS_PRESETS[graphicsPreset].shadows;
-
-    renderer.shadowMap.enabled = enabled;
-    sun.castShadow = enabled;
-    field.receiveShadow = enabled;
-
-    for (const wall of bb73Walls) {
-        wall.castShadow = false;
-    }
-
-    bb73Roof.castShadow = false;
-};
-
-console.log("Boostball v0.7.3 lighting loaded");
-
-  window.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.style.display==='none'&&!menuOpen){if(bbOnlineActive){el('uiRoom').textContent=bbOnlineRoom||'------';show('lobby');}else show('home');}});
-  show('home');
-})();
