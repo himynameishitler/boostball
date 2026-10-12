@@ -18307,7 +18307,10 @@ bbLeaveButton.onclick = () => {
 // server controls the ball, goals and clock. No duplicate ball physics.
 const bbOfflinePhysics = updatePhysics;
 updatePhysics = function (dt) {
-    if (!bbOnlineActive) { bbOfflinePhysics(dt); return; }
+    if (!bbOnlineActive || !bbOnlinePlaying) {
+    bbOfflinePhysics(dt);
+    return;
+}
     if (bbOnlinePlaying) {
         updateCar(dt);
         updateBoostPads(dt);
