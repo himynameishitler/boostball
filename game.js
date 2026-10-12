@@ -26,7 +26,7 @@ import * as THREE from
 // VERSION
 // ============================================================
 
-const GAME_VERSION = "v0.6.6.1";
+const GAME_VERSION = "v0.7.0";
 const GAME_CODENAME = "PURPLE PROTOTYPE";
 
 
@@ -18154,3 +18154,177 @@ console.log(
     "BOOSTBALL v0.6.6.2 — WALL CONTROL REBUILD READY"
 );
 
+
+
+
+// ============================================================
+// BOOSTBALL v0.7.0 — ONLINE 1v1 CLIENT (BETA)
+// Compatible with the supplied room-code WebSocket server.
+// Single-player remains unchanged when disconnected.
+// ============================================================
+const BB_ONLINE_URL = "wss://boostball-server-r6zb.onrender.com";
+let bbOnlineSocket = null;
+let bbOnlineRoom = null;
+let bbOnlineSlot = null;
+let bbOnlineActive = false;
+let bbOnlinePlaying = false;
+let bbOnlineLastSend = 0;
+let bbOnlineRemote = null;
+let bbOnlineTarget = null;
+
+const bbOnlinePanel = document.createElement("div");
+bbOnlinePanel.style.cssText = "position:fixed;right:14px;top:12px;z-index:110;background:rgba(8,15,28,.92);color:white;border:1px solid #568bd1;border-radius:10px;padding:12px;font:13px Arial,sans-serif;max-width:260px;box-shadow:0 5px 24px #0008";
+bbOnlinePanel.innerHTML = `
+  <div style="font-weight:bold;font-size:15px;margin-bottom:8px">BOOSTBALL · ONLINE 1v1 BETA</div>
+  <div style="display:flex;gap:6px;margin-bottom:8px">
+    <button id="bbCreateRoom" type="button">Create Room</button>
+    <button id="bbJoinRoom" type="button">Join Room</button>
+  </div>
+  <input id="bbRoomCode" maxlength="6" placeholder="6-character code" autocomplete="off" style="box-sizing:border-box;width:100%;padding:6px;background:#15243a;color:white;border:1px solid #59718d;border-radius:4px;text-transform:uppercase;margin-bottom:7px" />
+  <div id="bbOnlineStatus" style="line-height:1.5;overflow-wrap:anywhere">Offline — single-player available</div>
+  <button id="bbLeaveRoom" type="button" style="margin-top:8px;display:none">Leave Online Match</button>`;
+document.body.appendChild(bbOnlinePanel);
+const bbStatus = bbOnlinePanel.querySelector("#bbOnlineStatus");
+const bbRoomInput = bbOnlinePanel.querySelector("#bbRoomCode");
+const bbLeaveButton = bbOnlinePanel.querySelector("#bbLeaveRoom");
+for (const button of bbOnlinePanel.querySelectorAll("button")) {
+    button.style.cssText += ";padding:7px;background:#255eac;color:white;border:0;border-radius:5px;cursor:pointer";
+}
+function bbSetStatus(message) { bbStatus.textContent = message; }
+function bbOnlineCleanup(message = "Offline — single-player available") {
+    bbOnlineActive = false;
+    bbOnlinePlaying = false;
+    bbOnlineRoom = null;
+    bbOnlineSlot = null;
+    bbOnlineTarget = null;
+    bbLeaveButton.style.display = "none";
+    if (bbOnlineRemote) { scene.remove(bbOnlineRemote); bbOnlineRemote = null; }
+    bbSetStatus(message);
+    gameState = GAME_STATE.PLAYING;
+    resetKickoff();
+}
+function bbOnlineConnect(action, code = "") {
+    if (bbOnlineSocket) {
+        bbOnlineSocket.onclose = null;
+        bbOnlineSocket.close();
+        bbOnlineSocket = null;
+    }
+    bbOnlineCleanup("Connecting to server… (free hosting may take a minute)");
+    let socket;
+    try { socket = new WebSocket(BB_ONLINE_URL); }
+    catch (error) { bbSetStatus("Could not open WebSocket: " + error.message); return; }
+    bbOnlineSocket = socket;
+    socket.onopen = () => {
+        if (bbOnlineSocket !== socket) return;
+        socket.send(JSON.stringify(action === "create" ? {type:"create"} : {type:"join",code}));
+        bbSetStatus(action === "create" ? "Creating room…" : "Joining " + code + "…");
+    };
+    socket.onerror = () => { if (bbOnlineSocket === socket) bbSetStatus("Connection error. Check Render service status."); };
+    socket.onclose = () => {
+        if (bbOnlineSocket !== socket) return;
+        bbOnlineSocket = null;
+        bbOnlineCleanup("Disconnected. Single-player restored.");
+    };
+    socket.onmessage = event => {
+        if (bbOnlineSocket !== socket) return;
+        let msg;
+        try { msg = JSON.parse(event.data); } catch { return; }
+        if (msg.type === "error") { bbSetStatus("Server: " + msg.message); return; }
+        if (msg.type === "joined") {
+            bbOnlineActive = true;
+            bbOnlineRoom = msg.code;
+            bbOnlineSlot = msg.slot;
+            bbLeaveButton.style.display = "inline-block";
+            bbRoomInput.value = msg.code;
+            bbSetStatus("Room " + msg.code + " — waiting for opponent. Share this code!");
+            gameState = GAME_STATE.PLAYING;
+            return;
+        }
+        if (msg.type === "start") {
+            bbOnlinePlaying = true;
+            bbSetStatus("Room " + bbOnlineRoom + " — MATCH LIVE!");
+            if (!bbOnlineRemote) {
+                bbOnlineRemote = car.clone(true);
+                bbOnlineRemote.traverse(node => {
+                    if (node.isMesh) {
+                        node.material = node.material.clone();
+                        if (node === bbOnlineRemote.children[0] && node.material.color) node.material.color.setHex(0xff7a16);
+                    }
+                });
+                scene.add(bbOnlineRemote);
+            }
+            return;
+        }
+        if (msg.type === "kickoff") {
+            resetCar();
+            car.position.set(msg.x, GROUNDED_CAR_HEIGHT, msg.z);
+            carRotation = msg.heading;
+            car.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), msg.heading);
+            carVelocity.set(0,0,0);
+            verticalVelocity = 0;
+            return;
+        }
+        if (msg.type === "snapshot" && bbOnlineActive) {
+            if (msg.ball) {
+                ball.position.set(msg.ball.x, msg.ball.y, msg.ball.z);
+                ballVelocity.set(msg.ball.vx, msg.ball.vy, msg.ball.vz);
+            }
+            if (Array.isArray(msg.scores)) {
+                blueScore = msg.scores[0];
+                orangeScore = msg.scores[1];
+            }
+            if (Number.isFinite(msg.time)) matchTime = msg.time;
+            const opponent = msg.players?.[bbOnlineSlot === 0 ? 1 : 0];
+            if (opponent) bbOnlineTarget = opponent;
+            if (bbOnlineRemote) bbOnlineRemote.visible = !!opponent;
+            return;
+        }
+        if (msg.type === "opponentLeft") {
+            bbOnlinePlaying = false;
+            bbOnlineTarget = null;
+            if (bbOnlineRemote) bbOnlineRemote.visible = false;
+            bbSetStatus("Room " + bbOnlineRoom + " — opponent left. Waiting for another player.");
+            return;
+        }
+        if (msg.type === "finished") {
+            bbOnlinePlaying = false;
+            bbSetStatus("Match finished! Leave room to return to single-player.");
+        }
+    };
+}
+bbOnlinePanel.querySelector("#bbCreateRoom").onclick = () => bbOnlineConnect("create");
+bbOnlinePanel.querySelector("#bbJoinRoom").onclick = () => {
+    const code = bbRoomInput.value.trim().toUpperCase();
+    if (!/^[A-Z2-9]{6}$/.test(code)) { bbSetStatus("Enter the 6-character room code."); return; }
+    bbOnlineConnect("join", code);
+};
+bbLeaveButton.onclick = () => {
+    if (bbOnlineSocket) { bbOnlineSocket.onclose = null; bbOnlineSocket.close(); bbOnlineSocket = null; }
+    bbOnlineCleanup();
+};
+
+// In online mode, the existing car movement remains local while the
+// server controls the ball, goals and clock. No duplicate ball physics.
+const bbOfflinePhysics = updatePhysics;
+updatePhysics = function (dt) {
+    if (!bbOnlineActive) { bbOfflinePhysics(dt); return; }
+    if (bbOnlinePlaying) {
+        updateCar(dt);
+        updateBoostPads(dt);
+    }
+    if (bbOnlineTarget && bbOnlineRemote) {
+        const target = bbOnlineTarget;
+        const blend = 1 - Math.exp(-12 * dt);
+        bbOnlineRemote.position.lerp(new THREE.Vector3(target.x,target.y,target.z),blend);
+        bbOnlineRemote.quaternion.slerp(new THREE.Quaternion(target.qx,target.qy,target.qz,target.qw),blend);
+    }
+    const now = performance.now();
+    if (bbOnlinePlaying && now - bbOnlineLastSend >= 33 && bbOnlineSocket?.readyState === WebSocket.OPEN) {
+        bbOnlineLastSend = now;
+        bbOnlineSocket.send(JSON.stringify({type:"state",state:{
+            x:car.position.x,y:car.position.y,z:car.position.z,
+            qx:car.quaternion.x,qy:car.quaternion.y,qz:car.quaternion.z,qw:car.quaternion.w
+        }}));
+    }
+};
+console.log("BOOSTBALL v0.7.0 — online 1v1 client loaded");
