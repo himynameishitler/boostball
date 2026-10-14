@@ -109,8 +109,14 @@ overlay.innerHTML = `
       <button id="bbSignOut">SIGN OUT</button>
     </div>
 
-    <p id="bbAuthStatus" role="status"></p>
-  </div>
+    
+<div id="bbAuthError" hidden>
+  <button id="bbErrorDot"
+          type="button"
+          aria-label="Show login error"
+          title="Login error">!</button>
+  <div id="bbErrorMessage" role="alert" hidden></div>
+</div>
 `;
 
 const style = document.createElement("style");
@@ -169,7 +175,45 @@ style.textContent = `
   #bbGoogle { background: #356bb6; }
   #bbGuest { background: #353c59; }
   #bbReset { background: transparent; }
-  #bbAuthStatus { color: #ffb7bd; min-height: 20px; }
+  
+#bbAuthError {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 1000001;
+}
+
+#bbAuthError[hidden],
+#bbErrorMessage[hidden] {
+  display: none !important;
+}
+
+#bbAuthError #bbErrorDot {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  background: #ed3d51;
+  color: white;
+  border: 2px solid #ff9da9;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#bbErrorMessage {
+  position: absolute;
+  bottom: 36px;
+  right: 0;
+  width: min(300px, 80vw);
+  padding: 12px;
+  border-radius: 10px;
+  background: #30151e;
+  color: #ffd7dc;
+  border: 1px solid #ed3d51;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
 `;
 
 document.head.appendChild(style);
@@ -177,9 +221,20 @@ document.body.appendChild(overlay);
 
 const el = id => document.getElementById(id);
 
+
 function status(message) {
-  el("bbAuthStatus").textContent = message;
+  const error = el("bbAuthError");
+  const popup = el("bbErrorMessage");
+
+  error.hidden = !message;
+  popup.hidden = true;
+  popup.textContent = message;
 }
+
+el("bbErrorDot").onclick = () => {
+  const popup = el("bbErrorMessage");
+  popup.hidden = !popup.hidden;
+};
 
 function closeOverlay() {
   overlay.style.display = "none";
@@ -189,8 +244,28 @@ function showOverlay() {
   overlay.style.display = "grid";
 }
 
+
 async function run(action) {
-  status("Please wait...");
+  status("");
+
+  try {
+    await action();
+  } catch (error) {
+    console.error("Boostball authentication:", error);
+    status(error.message || "Authentication failed.");
+  }
+}
+
+async function run(action) {
+  status("");
+
+  try {
+    await action();
+  } catch (error) {
+    console.error("Boostball authentication:", error);
+    status(error.message || "Authentication failed.");
+  }
+}
 
   try {
     await action();
