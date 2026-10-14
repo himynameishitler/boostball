@@ -3554,6 +3554,18 @@ window.addEventListener(
                 event.key
             );
 
+const target = event.target;
+
+if (
+    target instanceof HTMLElement &&
+    target.closest("input, textarea, select, [contenteditable]")
+) {
+    return;
+}
+
+if (boostballInputBlocked() && !keyboardRebindingAction) {
+    return;
+}
 
         if (
             keyboardRebindingAction
@@ -3709,22 +3721,29 @@ window.addEventListener(
 // KEY HELD
 // ============================================================
 
-function keyHeld(
-    action
-) {
 
-    const key =
-        controls[action];
+// KEY HELD
+// ============================================================
 
+function boostballInputBlocked() {
+    const auth = document.getElementById("boostballAuth");
+    const front = document.getElementById("bbFront");
 
-    return (
-        !!key
-        &&
-        keys[key] === true
-    );
+    const authVisible = auth &&
+        getComputedStyle(auth).display !== "none";
+
+    const frontVisible = front &&
+        getComputedStyle(front).display !== "none";
+
+    return !!(authVisible || frontVisible || menuOpen);
 }
 
+function keyHeld(action) {
+    if (boostballInputBlocked()) return false;
 
+    const key = controls[action];
+    return !!key && keys[key] === true;
+}
 // ============================================================
 // KEYBOARD ACTION LABELS
 // ============================================================
