@@ -256,17 +256,6 @@ async function run(action) {
   }
 }
 
-async function run(action) {
-  status("");
-
-  try {
-    await action();
-  } catch (error) {
-    console.error("Boostball authentication:", error);
-    status(error.message || "Authentication failed.");
-  }
-}
-
   try {
     await action();
     status("");
