@@ -1,433 +1,624 @@
 
 /*
-  BOOSTBALL — LOADING INTRO
-  v3 — Purple / Blue / White
-
-  Plays once per tab session.
-  Refreshing skips the intro.
-  No external libraries required.
+ BOOSTBALL ANIME INTRO v4
+ Camera sweeps + letter impacts + final title slam
+ Fast monochrome 000-100 counter
+ Purple/blue reveal at 100
+ Once per tab session
 */
 
 (() => {
   "use strict";
 
-  const SESSION_KEY = "boostball-intro-v3-seen";
+  const SESSION_KEY = "boostball-intro-v4";
+  const reduced = matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
 
-  // Skip if already played in this tab.
   try {
-    if (sessionStorage.getItem(SESSION_KEY) === "1") {
+    if (sessionStorage.getItem(SESSION_KEY) === "played") {
       return;
     }
-  } catch (error) {
-    console.warn("Session storage unavailable:", error);
+  } catch (e) {
+    console.warn("Intro storage unavailable", e);
   }
 
   if (document.getElementById("bbAnimeIntro")) return;
 
-  const reduceMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+  const root = document.createElement("div");
+  root.id = "bbAnimeIntro";
 
-  // =========================================================
-  // CREATE INTRO
-  // =========================================================
+  root.innerHTML = `
+    <div class="bb-camera" id="bbCamera">
+      <div class="bb-backdrop"></div>
+      <div class="bb-flying-letters" id="bbFlying"></div>
 
-  const intro = document.createElement("div");
-  intro.id = "bbAnimeIntro";
+      <div class="bb-title" id="bbFinalTitle">
+        <div class="bb-loading" id="bbLoading"></div>
 
-  intro.innerHTML = `
-    <div class="bb-scene">
-      <div class="bb-logo" aria-label="Boost Ball Loading">
-
-        <div class="bb-loading-line" id="bbLoadingLetters"></div>
-
-        <div class="bb-main-row">
-          <div class="bb-number-wrap">
-            <span class="bb-digit bb-one">1</span>
-            <span class="bb-digit bb-zero-one">0</span>
-            <span class="bb-digit bb-zero-two">0</span>
-            <span class="bb-percent">%</span>
+        <div class="bb-title-main">
+          <div class="bb-count" id="bbCount">
+            <span id="bbDigit1">0</span><span id="bbDigit2">0</span><span id="bbDigit3">0</span>
+            <small>%</small>
           </div>
 
-          <div class="bb-name-wrap">
-            <div class="bb-boost" id="bbBoostLetters"></div>
-            <div class="bb-ball" id="bbBallLetters"></div>
+          <div class="bb-title-name">
+            <div class="bb-boost" id="bbBoost"></div>
+            <div class="bb-ball" id="bbBall"></div>
           </div>
         </div>
-
       </div>
     </div>
+
+    <div class="bb-impact-flash" id="bbFlash"></div>
   `;
 
-  // =========================================================
-  // STYLES
-  // =========================================================
+  const css = document.createElement("style");
 
-  const style = document.createElement("style");
-
-  style.textContent = `
+  css.textContent = `
     #bbAnimeIntro {
       position: fixed;
       inset: 0;
       z-index: 2147483647;
       overflow: hidden;
-      background:
-        radial-gradient(
-          ellipse at center,
-          #f8fbff 0%,
-          #e5edff 65%,
-          #d3ddfa 100%
-        );
-      font-family: Arial Black, Impact, Arial, sans-serif;
+      background: #edf2ff;
+      font-family: Impact, "Arial Black", Arial, sans-serif;
       isolation: isolate;
       pointer-events: all;
-      transition: opacity .45s ease;
+      transition: opacity .4s ease;
     }
 
     #bbAnimeIntro * {
       box-sizing: border-box;
     }
 
-    #bbAnimeIntro .bb-scene {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    #bbAnimeIntro .bb-camera {
+      position: absolute;
+      inset: 0;
       transform-origin: center;
+      will-change: transform;
     }
 
-    #bbAnimeIntro .bb-scene.bb-shake {
-      animation: bbScreenShake .22s linear;
+    #bbAnimeIntro .bb-backdrop {
+      position: absolute;
+      inset: -30%;
+      background:
+        radial-gradient(
+          ellipse at center,
+          #fff 0%,
+          #f0f4ff 55%,
+          #d7e2ff 100%
+        );
     }
 
-    @keyframes bbScreenShake {
-      0%   { transform: translate(0, 0); }
-      15%  { transform: translate(-11px, 7px); }
-      30%  { transform: translate(10px, -6px); }
-      45%  { transform: translate(-8px, 5px); }
-      60%  { transform: translate(6px, -4px); }
-      75%  { transform: translate(-4px, 2px); }
-      100% { transform: translate(0, 0); }
+    /* CAMERA SWEEPS */
+
+    #bbAnimeIntro .bb-camera.sweep-left {
+      animation: bbSweepLeft .42s ease-out both;
     }
 
-    #bbAnimeIntro .bb-logo {
+    #bbAnimeIntro .bb-camera.sweep-right {
+      animation: bbSweepRight .42s ease-out both;
+    }
+
+    #bbAnimeIntro .bb-camera.sweep-tilt {
+      animation: bbSweepTilt .42s ease-out both;
+    }
+
+    @keyframes bbSweepLeft {
+      from {
+        transform: translate(15vw, -8vh)
+          rotate(8deg) scale(1.35);
+      }
+      to {
+        transform: translate(-5vw, 3vh)
+          rotate(-4deg) scale(1.12);
+      }
+    }
+
+    @keyframes bbSweepRight {
+      from {
+        transform: translate(-15vw, 9vh)
+          rotate(-9deg) scale(1.4);
+      }
+      to {
+        transform: translate(5vw, -3vh)
+          rotate(4deg) scale(1.12);
+      }
+    }
+
+    @keyframes bbSweepTilt {
+      from {
+        transform: translate(6vw, 12vh)
+          rotate(12deg) scale(1.45);
+      }
+      to {
+        transform: translate(-4vw, -3vh)
+          rotate(-5deg) scale(1.1);
+      }
+    }
+
+    /* CAMERA IMPACT */
+
+    #bbAnimeIntro .bb-camera.impact {
+      animation: bbCameraImpact .23s linear both;
+    }
+
+    @keyframes bbCameraImpact {
+      0% { transform: translate(0,0) rotate(0); }
+      18% { transform: translate(-7px,4px) rotate(-.4deg); }
+      35% { transform: translate(6px,-4px) rotate(.35deg); }
+      55% { transform: translate(-4px,2px); }
+      75% { transform: translate(2px,-1px); }
+      100% { transform: translate(0,0) rotate(0); }
+    }
+
+    /* INDIVIDUAL GIANT LETTERS */
+
+    #bbAnimeIntro .bb-flying-letters {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    #bbAnimeIntro .bb-fly {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      font-size: clamp(220px, 48vw, 740px);
+      font-weight: 1000;
+      line-height: .8;
+      letter-spacing: -.1em;
+      color: #6426b9;
+      -webkit-text-stroke: 5px white;
+      paint-order: stroke fill;
+      filter: drop-shadow(7px 9px 0 #344a88);
+      opacity: 0;
+      transform:
+        translate(-50%, -190vh)
+        rotate(-18deg) scale(1.7);
+      pointer-events: none;
+    }
+
+    #bbAnimeIntro .bb-fly.blue {
+      color: #387ef4;
+      filter: drop-shadow(7px 9px 0 #6d32b9);
+    }
+
+    #bbAnimeIntro .bb-fly.land {
+      animation: bbFlyLand .42s
+        cubic-bezier(.13,.85,.2,1.1) forwards;
+    }
+
+    #bbAnimeIntro .bb-fly.leave {
+      animation: bbFlyLeave .2s ease-in forwards;
+    }
+
+    @keyframes bbFlyLand {
+      0% {
+        opacity: 1;
+        transform:
+          translate(-50%, -190vh)
+          rotate(-18deg) scale(1.7);
+      }
+      70% {
+        opacity: 1;
+        transform:
+          translate(-50%, -46%)
+          rotate(5deg) scale(1.08);
+      }
+      84% {
+        transform:
+          translate(-50%, -54%)
+          rotate(-2deg) scale(.96);
+      }
+      100% {
+        opacity: 1;
+        transform:
+          translate(-50%, -50%)
+          rotate(0) scale(1);
+      }
+    }
+
+    @keyframes bbFlyLeave {
+      from {
+        opacity: 1;
+        transform: translate(-50%,-50%) scale(1);
+      }
+      to {
+        opacity: 0;
+        transform:
+          translate(-85%,-30%)
+          rotate(-14deg) scale(1.7);
+      }
+    }
+
+    /* FINAL COMPOSITION */
+
+    #bbAnimeIntro .bb-title {
+      position: absolute;
+      left: 50%;
+      top: 50%;
       width: min(96vw, 1450px);
-      transform: rotate(-2deg);
-      filter: drop-shadow(0 9px 3px #5068aa33);
+      transform:
+        translate(-50%, -180vh)
+        rotate(-7deg) scale(1.3);
+      opacity: 0;
+      will-change: transform;
     }
 
-    #bbAnimeIntro .bb-loading-line {
+    #bbAnimeIntro .bb-title.drop {
+      animation: bbTitleDrop .65s
+        cubic-bezier(.16,.82,.23,1.04) forwards;
+    }
+
+    @keyframes bbTitleDrop {
+      0% {
+        opacity: 1;
+        transform:
+          translate(-50%, -180vh)
+          rotate(-7deg) scale(1.3);
+      }
+      67% {
+        transform:
+          translate(-50%, -43%)
+          rotate(2deg) scale(1.05,.89);
+      }
+      80% {
+        transform:
+          translate(-50%, -55%)
+          rotate(-1deg) scale(.98,1.05);
+      }
+      100% {
+        opacity: 1;
+        transform:
+          translate(-50%, -50%)
+          rotate(-2deg) scale(1);
+      }
+    }
+
+    #bbAnimeIntro .bb-loading {
       display: flex;
       justify-content: flex-start;
-      gap: .005em;
-      margin-left: 9%;
+      margin-left: 8%;
       margin-bottom: -1%;
-      font-size: clamp(32px, 8.8vw, 145px);
+      font-size: clamp(38px, 8.3vw, 135px);
       line-height: .95;
-      letter-spacing: -.07em;
     }
 
-    #bbAnimeIntro .bb-main-row {
+    #bbAnimeIntro .bb-title-main {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 1%;
     }
 
-    #bbAnimeIntro .bb-number-wrap {
+    #bbAnimeIntro .bb-count {
       display: flex;
       align-items: baseline;
       flex: 0 0 auto;
-      white-space: nowrap;
-      font-size: clamp(88px, 23vw, 380px);
+      font-size: clamp(85px, 22vw, 340px);
       font-weight: 1000;
-      line-height: .9;
-      letter-spacing: -.105em;
+      line-height: .88;
+      letter-spacing: -.11em;
+      color: #444;
+      font-variant-numeric: tabular-nums;
+      transform-origin: center;
     }
 
-    #bbAnimeIntro .bb-name-wrap {
+    #bbAnimeIntro .bb-count span {
+      display: inline-block;
+      -webkit-text-stroke:
+        clamp(2px,.6vw,9px) white;
+      paint-order: stroke fill;
+    }
+
+    #bbAnimeIntro .bb-count span:nth-child(2),
+    #bbAnimeIntro .bb-count span:nth-child(3) {
+      color: #888;
+    }
+
+    #bbAnimeIntro .bb-count small {
+      font-size: .27em;
+      letter-spacing: 0;
+      margin-left: .1em;
+      color: #555;
+      -webkit-text-stroke: 3px white;
+      paint-order: stroke fill;
+    }
+
+    #bbAnimeIntro .bb-count.complete {
+      animation: bbHundredPop .38s
+        cubic-bezier(.14,1.4,.25,1) both;
+    }
+
+    #bbAnimeIntro .bb-count.complete span:first-child,
+    #bbAnimeIntro .bb-count.complete small {
+      color: #6926be;
+    }
+
+    #bbAnimeIntro .bb-count.complete span:nth-child(2),
+    #bbAnimeIntro .bb-count.complete span:nth-child(3) {
+      color: #387ff7;
+    }
+
+    @keyframes bbHundredPop {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.13) rotate(-2deg); }
+      75% { transform: scale(.97) rotate(1deg); }
+      100% { transform: scale(1); }
+    }
+
+    #bbAnimeIntro .bb-title-name {
       display: flex;
-      flex-direction: column;
-      align-items: flex-start;
       flex: 1;
       min-width: 0;
-      transform: translateY(4%);
+      flex-direction: column;
+      align-items: flex-start;
     }
 
     #bbAnimeIntro .bb-boost,
     #bbAnimeIntro .bb-ball {
       display: flex;
       white-space: nowrap;
-      font-size: clamp(44px, 11vw, 175px);
+      font-size: clamp(42px, 10.4vw, 165px);
       font-weight: 1000;
-      line-height: .85;
-      letter-spacing: -.075em;
+      line-height: .86;
     }
 
     #bbAnimeIntro .bb-ball {
       margin-left: 5%;
-      font-size: clamp(48px, 12vw, 190px);
+      font-size: clamp(46px, 11.2vw, 178px);
     }
 
-    #bbAnimeIntro .bb-letter,
-    #bbAnimeIntro .bb-digit,
-    #bbAnimeIntro .bb-percent {
+    #bbAnimeIntro .bb-letter {
       display: inline-block;
-      position: relative;
       -webkit-text-stroke:
-        clamp(2px, .6vw, 9px) #fff;
+        clamp(2px,.6vw,9px) white;
       paint-order: stroke fill;
-      filter: drop-shadow(3px 5px 0 #ffffff);
+      filter: drop-shadow(2px 4px 0 #ffffff);
+    }
+
+    #bbAnimeIntro .bb-letter.purple {
+      color: #6926be;
+    }
+
+    #bbAnimeIntro .bb-letter.blue {
+      color: #387ff7;
+    }
+
+    /* IMPACT FLASH */
+
+    #bbAnimeIntro .bb-impact-flash {
+      position: absolute;
+      inset: 0;
+      background: white;
       opacity: 0;
-      transform: translateY(-140vh) scale(1.3);
-      will-change: transform, opacity;
+      pointer-events: none;
+      z-index: 10;
     }
 
-    #bbAnimeIntro .bb-letter.purple,
-    #bbAnimeIntro .bb-digit.purple {
-      color: #6c25b9;
+    #bbAnimeIntro .bb-impact-flash.hit {
+      animation: bbFlash .16s ease-out;
     }
 
-    #bbAnimeIntro .bb-letter.blue,
-    #bbAnimeIntro .bb-digit.blue {
-      color: #397cf5;
+    @keyframes bbFlash {
+      0% { opacity: .26; }
+      100% { opacity: 0; }
     }
 
-    #bbAnimeIntro .bb-digit {
-      color: #397cf5;
-    }
-
-    #bbAnimeIntro .bb-one {
-      color: #6c25b9;
-    }
-
-    #bbAnimeIntro .bb-percent {
-      color: #6c25b9;
-      font-size: .29em;
-      margin-left: .15em;
-      letter-spacing: 0;
-    }
-
-    #bbAnimeIntro .bb-letter.bb-land,
-    #bbAnimeIntro .bb-digit.bb-land,
-    #bbAnimeIntro .bb-percent.bb-land {
-      animation: bbLetterFall .48s
-        cubic-bezier(.18,.85,.22,1.05) forwards;
-    }
-
-    @keyframes bbLetterFall {
-      0% {
-        opacity: 1;
-        transform: translateY(-140vh) scale(1.3);
-      }
-
-      65% {
-        opacity: 1;
-        transform: translateY(15px) scaleY(.84) scaleX(1.08);
-      }
-
-      79% {
-        transform: translateY(-18px) scaleY(1.06);
-      }
-
-      91% {
-        transform: translateY(5px) scaleY(.96);
-      }
-
-      100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    #bbAnimeIntro.bb-finished {
+    #bbAnimeIntro.exit {
       opacity: 0;
       pointer-events: none;
     }
 
-    @media (max-width: 600px) {
-      #bbAnimeIntro .bb-logo {
-        width: 98vw;
-      }
-
-      #bbAnimeIntro .bb-loading-line {
-        margin-left: 4%;
-      }
-
-      #bbAnimeIntro .bb-main-row {
-        gap: 0;
-      }
-
-      #bbAnimeIntro .bb-number-wrap {
-        font-size: 21vw;
-      }
-
-      #bbAnimeIntro .bb-boost,
-      #bbAnimeIntro .bb-ball {
-        font-size: 10vw;
-      }
-    }
-
     @media (prefers-reduced-motion: reduce) {
-      #bbAnimeIntro .bb-letter,
-      #bbAnimeIntro .bb-digit,
-      #bbAnimeIntro .bb-percent {
+      #bbAnimeIntro .bb-camera,
+      #bbAnimeIntro .bb-title,
+      #bbAnimeIntro .bb-count {
         animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
       }
 
-      #bbAnimeIntro .bb-scene {
-        animation: none !important;
+      #bbAnimeIntro .bb-title {
+        opacity: 1;
+        transform: translate(-50%,-50%);
+      }
+
+      #bbAnimeIntro .bb-flying-letters {
+        display: none;
       }
     }
   `;
 
-  document.head.appendChild(style);
-  document.body.appendChild(intro);
+  document.head.appendChild(css);
+  document.body.appendChild(root);
 
-  // =========================================================
-  // GENERATE LETTERS
-  // =========================================================
+  const $ = selector => root.querySelector(selector);
+  const camera = $("#bbCamera");
+  const flying = $("#bbFlying");
+  const flash = $("#bbFlash");
+  const title = $("#bbFinalTitle");
+  const count = $("#bbCount");
 
-  function addLetters(containerId, word, startBlue = false) {
-    const container = document.getElementById(containerId);
+  const timers = [];
+  let counterFrame = 0;
 
-    return [...word].map((letter, index) => {
+  function later(fn, ms) {
+    timers.push(setTimeout(fn, ms));
+  }
+
+  function restartAnimation(element, name) {
+    element.classList.remove(name);
+    void element.offsetWidth;
+    element.classList.add(name);
+  }
+
+  function addWord(id, word, firstBlue = false) {
+    const parent = $(id);
+
+    [...word].forEach((letter, i) => {
       const span = document.createElement("span");
-
-      const blue = (index % 2 === 0) === startBlue;
+      const blue = (i % 2 === 0) === firstBlue;
 
       span.className =
         `bb-letter ${blue ? "blue" : "purple"}`;
-
       span.textContent = letter;
-      container.appendChild(span);
-
-      return span;
+      parent.appendChild(span);
     });
   }
 
-  const loadingLetters = addLetters(
-    "bbLoadingLetters",
-    "LOADING",
-    false
-  );
+  addWord("#bbLoading", "LOADING");
+  addWord("#bbBoost", "BOOST");
+  addWord("#bbBall", "BALL", true);
 
-  const boostLetters = addLetters(
-    "bbBoostLetters",
-    "BOOST",
-    false
-  );
+  function impact(strength = 1) {
+    if (reduced) return;
 
-  const ballLetters = addLetters(
-    "bbBallLetters",
-    "BALL",
-    true
-  );
+    // Camera shake, followed by a white impact flash.
+    camera.classList.remove(
+      "sweep-left", "sweep-right", "sweep-tilt"
+    );
 
-  const digits = [
-    intro.querySelector(".bb-one"),
-    intro.querySelector(".bb-zero-one"),
-    intro.querySelector(".bb-zero-two")
-  ];
+    restartAnimation(camera, "impact");
 
-  const percent = intro.querySelector(".bb-percent");
-  const scene = intro.querySelector(".bb-scene");
-
-  // =========================================================
-  // IMPACT ANIMATION
-  // =========================================================
-
-  let shakeTimer = null;
-
-  function shake() {
-    if (reduceMotion) return;
-
-    scene.classList.remove("bb-shake");
-
-    // Restart CSS animation.
-    void scene.offsetWidth;
-
-    scene.classList.add("bb-shake");
-
-    clearTimeout(shakeTimer);
-
-    shakeTimer = setTimeout(() => {
-      scene.classList.remove("bb-shake");
-    }, 230);
+    if (strength > .5) {
+      restartAnimation(flash, "hit");
+    }
   }
 
-  function land(element, delay, impact = true) {
-    setTimeout(() => {
-      element.classList.add("bb-land");
+  function cameraSweep(index) {
+    if (reduced) return;
 
-      if (impact) {
-        setTimeout(shake, 300);
+    const sweeps = [
+      "sweep-left",
+      "sweep-right",
+      "sweep-tilt"
+    ];
+
+    camera.classList.remove(
+      "impact", ...sweeps
+    );
+
+    restartAnimation(
+      camera,
+      sweeps[index % sweeps.length]
+    );
+  }
+
+  function flyLetter(letter, index, start) {
+    later(() => {
+      flying.textContent = "";
+
+      const span = document.createElement("span");
+      span.className =
+        `bb-fly ${index % 2 ? "blue" : ""}`;
+      span.textContent = letter;
+
+      flying.appendChild(span);
+
+      cameraSweep(index);
+      restartAnimation(span, "land");
+
+      // The impact happens as the letter reaches the frame.
+      later(() => impact(.7), 275);
+
+      later(() => {
+        span.classList.remove("land");
+        restartAnimation(span, "leave");
+      }, 455);
+    }, start);
+  }
+
+  function setCounter(value) {
+    const digits = String(value).padStart(3, "0");
+
+    $("#bbDigit1").textContent = digits[0];
+    $("#bbDigit2").textContent = digits[1];
+    $("#bbDigit3").textContent = digits[2];
+  }
+
+  function windCounter() {
+    const start = performance.now();
+    const duration = 570; // Very fast wind-up.
+
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+
+      // Rapid acceleration, then a sharp final snap.
+      const eased = t < .8
+        ? .82 * Math.pow(t / .8, 1.45)
+        : .82 + .18 *
+          (1 - Math.pow((1 - t) / .2, 2));
+
+      const value = Math.min(
+        99,
+        Math.floor(eased * 100)
+      );
+
+      setCounter(value);
+
+      if (t < 1) {
+        counterFrame = requestAnimationFrame(frame);
+      } else {
+        setCounter(100);
+        count.classList.add("complete");
+        impact(1);
       }
-    }, delay);
+    }
+
+    counterFrame = requestAnimationFrame(frame);
   }
 
-  // =========================================================
+  function finish() {
+    root.classList.add("exit");
+
+    later(() => {
+      cancelAnimationFrame(counterFrame);
+      timers.forEach(clearTimeout);
+      root.remove();
+      css.remove();
+    }, 450);
+  }
+
+  // =====================================================
   // TIMELINE
-  // =========================================================
+  // =====================================================
 
-  if (reduceMotion) {
-    [
-      ...loadingLetters,
-      ...digits,
-      percent,
-      ...boostLetters,
-      ...ballLetters
-    ].forEach(element => {
-      element.style.opacity = "1";
-      element.style.transform = "none";
-    });
+  if (reduced) {
+    setCounter(100);
+    count.classList.add("complete");
+    later(finish, 900);
   } else {
-    // LOADING falls in first.
-    loadingLetters.forEach((element, index) => {
-      land(element, 150 + index * 95, true);
+    // Close-up letters with camera sweeps.
+    const sequence = [
+      "B", "O", "O", "S", "T",
+      "B", "A", "L", "L"
+    ];
+
+    sequence.forEach((letter, i) => {
+      flyLetter(letter, i, 120 + i * 290);
     });
 
-    // Giant 100 slams down.
-    digits.forEach((element, index) => {
-      land(element, 1050 + index * 175, true);
-    });
+    // Camera returns to centre for the full-title impact.
+    later(() => {
+      flying.textContent = "";
+      camera.className = "bb-camera";
+      title.classList.add("drop");
 
-    // Percent sign.
-    land(percent, 1650, true);
+      // Full composition lands.
+      later(() => impact(1), 425);
+    }, 2850);
 
-    // BOOST letters.
-    boostLetters.forEach((element, index) => {
-      land(element, 1950 + index * 105, true);
-    });
+    // Counter starts monochrome and winds rapidly.
+    later(windCounter, 3670);
 
-    // BALL letters.
-    ballLetters.forEach((element, index) => {
-      land(element, 2700 + index * 130, true);
-    });
+    // Hold the completed logo briefly.
+    later(finish, 5050);
   }
 
-  // =========================================================
-  // EXIT
-  // =========================================================
-
-  const introDuration = reduceMotion ? 1000 : 4800;
-
-  setTimeout(() => {
-    intro.classList.add("bb-finished");
-
-    setTimeout(() => {
-      intro.remove();
-      style.remove();
-    }, 500);
-  }, introDuration);
-
-  // Mark intro as played only after creating it successfully.
   try {
-    sessionStorage.setItem(SESSION_KEY, "1");
-  } catch (error) {
-    console.warn("Could not save intro session:", error);
+    sessionStorage.setItem(SESSION_KEY, "played");
+  } catch (e) {
+    console.warn("Unable to save intro session", e);
   }
 })();
