@@ -310,6 +310,7 @@ el("bbSignIn").onclick = () => run(async () => {
   );
 
   await ensureProfile(result.user);
+  closeOverlay();
 });
 
 el("bbGoogle").onclick = () => run(async () => {
