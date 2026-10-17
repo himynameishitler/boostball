@@ -1,283 +1,422 @@
 
+/* BOOSTBALL — MONOCHROME INTRO */
 (() => {
-  // BOOSTBALL — ANIME-STYLE INTRO
-  // Visual-only intro. Does not affect game physics.
+  if (document.getElementById("bbAnimeIntro")) return;
 
-  const intro = document.createElement("div");
-  intro.id = "bbAnimeIntro";
+  const reduce = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
 
-  intro.innerHTML = `
-    <div class="bbIntroFlash"></div>
-    <div class="bbIntroLines"></div>
+  const layer = document.createElement("div");
+  layer.id = "bbAnimeIntro";
+  layer.setAttribute(
+    "aria-label",
+    "Boost Ball loading animation"
+  );
 
-    <div class="bbIntroContent">
-      <div class="bbIntroSubtitle">WELCOME TO THE ARENA</div>
-      <div class="bbIntroLetters"></div>
+  layer.innerHTML = `
+    <div class="bb-wash"></div>
+    <div class="bb-swoosh bb-swoosh-a"></div>
+    <div class="bb-swoosh bb-swoosh-b"></div>
+    <div class="bb-type-field" aria-hidden="true"></div>
 
-      <div class="bbIntroCounter">
-        <span id="bbIntroNumber">000</span>
-        <small>%</small>
+    <div class="bb-title">
+      <div class="bb-overline">WELCOME TO THE ARENA</div>
+      <div class="bb-word bb-boost">BOOST</div>
+      <div class="bb-word bb-ball">BALL</div>
+      <div class="bb-loading">L O A D I N G</div>
+      <div class="bb-number">
+        <span id="bbCount">000</span>
+        <span class="bb-percent">%</span>
       </div>
-
-      <div class="bbIntroBar">
-        <div id="bbIntroProgress"></div>
-      </div>
-
-      <div class="bbIntroLoading">INITIALISING BOOSTBALL...</div>
+      <div class="bb-bottom">READY TO ROLL?</div>
     </div>
+
+    <div class="bb-final-flash"></div>
   `;
 
-  const css = document.createElement("style");
-  css.textContent = `
+  const style = document.createElement("style");
+
+  style.textContent = `
     #bbAnimeIntro {
       position: fixed;
       inset: 0;
       z-index: 2147483647;
-      background: radial-gradient(
-        ellipse at center,
-        #291458 0%,
-        #090b1d 65%,
-        #02040d 100%
-      );
+      overflow: hidden;
       display: grid;
       place-items: center;
-      overflow: hidden;
-      color: white;
-      font-family: Arial, sans-serif;
-      pointer-events: all;
-      transition: opacity .6s ease;
+      background: #e6e6e6;
+      color: #111;
+      font-family: Arial, Helvetica, sans-serif;
+      isolation: isolate;
+      pointer-events: auto;
+      opacity: 1;
+      transition: opacity .45s ease;
     }
 
     #bbAnimeIntro * {
       box-sizing: border-box;
     }
 
-    .bbIntroContent {
-      position: relative;
-      z-index: 3;
-      width: 100%;
-      text-align: center;
-      padding: 20px;
-    }
-
-    .bbIntroSubtitle {
-      font-size: clamp(10px, 1.5vw, 15px);
-      letter-spacing: 6px;
-      font-weight: 900;
-      color: #bba6ff;
-      margin-bottom: 25px;
-      opacity: 0;
-      animation: bbFadeIn .5s .2s forwards;
-    }
-
-    .bbIntroLetters {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: clamp(0px, .3vw, 5px);
-      white-space: nowrap;
-      perspective: 900px;
-    }
-
-    .bbIntroLetter {
-      display: inline-block;
-      font-size: clamp(30px, 8vw, 105px);
-      font-weight: 1000;
-      letter-spacing: -4px;
-      color: #fff;
-      text-shadow:
-        0 4px 0 #7255db,
-        0 10px 25px #7854db99;
-      opacity: 0;
-      transform: translateY(-150vh) scale(1.6);
-      animation: bbLetterSlam .34s cubic-bezier(.12,.8,.3,1.3) forwards;
-    }
-
-    .bbIntroLetter.accent {
-      color: #ac92ff;
-      text-shadow:
-        0 4px 0 #4c35a5,
-        0 10px 30px #9b76ff99;
-    }
-
-    @keyframes bbLetterSlam {
-      0% {
-        opacity: 1;
-        transform: translateY(-150vh) scale(1.6);
-      }
-      75% {
-        transform: translateY(12px) scale(.93);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    .bbIntroCounter {
-      margin-top: 38px;
-      font-size: clamp(60px, 13vw, 170px);
-      font-weight: 1000;
-      font-style: italic;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-      color: #ffffff;
-      text-shadow: 0 0 45px #926cff99;
-    }
-
-    .bbIntroCounter small {
-      font-size: .28em;
-      color: #a88cff;
-    }
-
-    .bbIntroBar {
-      width: min(460px, 75vw);
-      height: 8px;
-      background: #ffffff22;
-      margin: 28px auto 15px;
-      border-radius: 100px;
-      overflow: hidden;
-      border: 1px solid #ffffff44;
-    }
-
-    #bbIntroProgress {
-      width: 0%;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        #4969ff,
-        #b28cff,
-        #ffffff
-      );
-      box-shadow: 0 0 20px #a88cff;
-    }
-
-    .bbIntroLoading {
-      font-size: 12px;
-      font-weight: bold;
-      letter-spacing: 3px;
-      color: #aeb8d7;
-    }
-
-    .bbIntroLines {
+    #bbAnimeIntro .bb-wash {
       position: absolute;
-      inset: -100%;
-      background: repeating-linear-gradient(
-        115deg,
-        transparent 0px,
-        transparent 36px,
-        #9770ff12 37px,
-        transparent 42px
+      inset: -15%;
+      background: radial-gradient(
+        ellipse at 50% 45%,
+        #fff 0%,
+        #ededed 45%,
+        #a8a8a8 100%
       );
-      animation: bbLines 1.5s linear infinite;
+      animation: bbWash 3.8s ease both;
     }
 
-    @keyframes bbLines {
-      to { transform: translateX(120px); }
+    #bbAnimeIntro .bb-swoosh {
+      position: absolute;
+      width: 150vw;
+      height: 25vh;
+      left: -25vw;
+      top: 30%;
+      background: #333;
+      opacity: .14;
+      transform: rotate(-17deg) translateX(-140vw);
+      animation: bbSweep 1.3s ease-in-out both;
     }
 
-    .bbIntroFlash {
+    #bbAnimeIntro .bb-swoosh-b {
+      background: #999;
+      top: 65%;
+      height: 13vh;
+      animation-delay: .3s;
+    }
+
+    #bbAnimeIntro .bb-type-field {
       position: absolute;
       inset: 0;
-      background: white;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    #bbAnimeIntro .bb-fly {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      font-size: clamp(160px, 36vw, 560px);
+      font-weight: 1000;
+      line-height: .8;
+      letter-spacing: -.12em;
+      color: #777;
+      -webkit-text-stroke: 5px white;
+      paint-order: stroke fill;
+      text-shadow: 8px 9px 0 #111;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(3);
+      animation:
+        bbFly var(--dur)
+        cubic-bezier(.22,.7,.22,1)
+        var(--delay) both;
+    }
+
+    #bbAnimeIntro .bb-fly.alt {
+      color: #111;
+      text-shadow: 8px 9px 0 #888;
+    }
+
+    #bbAnimeIntro .bb-title {
+      position: relative;
+      z-index: 2;
+      width: min(94vw, 760px);
+      text-align: center;
+      opacity: 0;
+      transform: scale(1.4);
+      animation:
+        bbTitleEnter .7s
+        cubic-bezier(.12,.85,.18,1.1)
+        2.45s forwards;
+    }
+
+    #bbAnimeIntro .bb-overline {
+      font-size: clamp(10px, 1.8vw, 16px);
+      letter-spacing: .4em;
+      color: #555;
+      font-weight: 900;
+      margin-bottom: 5px;
+    }
+
+    #bbAnimeIntro .bb-word {
+      font-weight: 1000;
+      font-size: clamp(72px, 15.5vw, 170px);
+      line-height: .76;
+      letter-spacing: -.09em;
+      color: #777;
+      -webkit-text-stroke: 3px white;
+      paint-order: stroke fill;
+      text-shadow:
+        5px 5px 0 #111,
+        9px 9px 0 #aaa;
+      white-space: nowrap;
+    }
+
+    #bbAnimeIntro .bb-boost {
+      transform: translateX(-3%);
+    }
+
+    #bbAnimeIntro .bb-ball {
+      color: #111;
+      transform: translateX(5%);
+      position: relative;
+      text-shadow:
+        5px 5px 0 #777,
+        9px 9px 0 white;
+    }
+
+    #bbAnimeIntro .bb-loading {
+      display: inline-block;
+      margin-top: 22px;
+      font-weight: 1000;
+      letter-spacing: .4em;
+      font-size: clamp(12px, 2.3vw, 21px);
+      color: #111;
+      background: #fff;
+      padding: 3px 12px;
+    }
+
+    #bbAnimeIntro .bb-number {
+      font-weight: 1000;
+      line-height: 1;
+      font-size: clamp(100px, 22vw, 240px);
+      letter-spacing: -.1em;
+      font-variant-numeric: tabular-nums;
+      color: #111;
+      -webkit-text-stroke:
+        clamp(2px, .5vw, 6px) #fff;
+      paint-order: stroke fill;
+      filter: drop-shadow(6px 7px 0 #888);
+      transform: scale(.55) rotate(-6deg);
+      opacity: 0;
+      animation:
+        bbNumberPop .55s
+        cubic-bezier(.16,1.3,.28,1)
+        3.05s forwards;
+    }
+
+    #bbAnimeIntro .bb-percent {
+      font-size: .32em;
+      vertical-align: top;
+      letter-spacing: 0;
+      margin-left: .12em;
+      color: #777;
+    }
+
+    #bbAnimeIntro .bb-bottom {
+      font-weight: 900;
+      letter-spacing: .36em;
+      font-size: clamp(10px, 1.8vw, 14px);
+      color: #555;
+      opacity: 0;
+      animation: bbBottom .35s 4.1s forwards;
+    }
+
+    #bbAnimeIntro .bb-final-flash {
+      position: absolute;
+      inset: 0;
+      background: #fff;
       opacity: 0;
       pointer-events: none;
-      z-index: 5;
+      animation: bbFinalFlash .35s 2.38s both;
     }
 
-    .bbIntroFlash.active {
-      animation: bbFlash .3s ease-out;
+    #bbAnimeIntro.bb-out {
+      opacity: 0;
+      pointer-events: none;
     }
 
-    @keyframes bbFlash {
-      0% { opacity: .65; }
-      100% { opacity: 0; }
+    @keyframes bbFly {
+      0% {
+        opacity: 0;
+        transform: translate(
+          calc(-50% + var(--sx)),
+          calc(-50% + var(--sy))
+        ) scale(3.2) rotate(var(--rot));
+      }
+
+      15% { opacity: 1; }
+
+      58% {
+        opacity: 1;
+        transform:
+          translate(-50%, -50%)
+          scale(1.05) rotate(0deg);
+      }
+
+      74% {
+        opacity: 1;
+        transform:
+          translate(-50%, -50%)
+          scale(.95) rotate(3deg);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(
+          calc(-50% + var(--ex)),
+          calc(-50% + var(--ey))
+        ) scale(2.2) rotate(-9deg);
+      }
     }
 
-    @keyframes bbFadeIn {
+    @keyframes bbTitleEnter {
+      0% {
+        opacity: 0;
+        transform: scale(1.6) rotate(-5deg);
+        filter: blur(10px);
+      }
+
+      65% {
+        opacity: 1;
+        transform: scale(.96) rotate(1deg);
+        filter: blur(0);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+
+    @keyframes bbNumberPop {
+      0% {
+        opacity: 0;
+        transform: scale(.4) rotate(-12deg);
+      }
+
+      65% {
+        opacity: 1;
+        transform: scale(1.13) rotate(3deg);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(-2deg);
+      }
+    }
+
+    @keyframes bbFinalFlash {
+      0%, 100% { opacity: 0; }
+      48% { opacity: .8; }
+    }
+
+    @keyframes bbSweep {
+      0% {
+        opacity: 0;
+        transform:
+          translateX(-130vw) rotate(-17deg);
+      }
+
+      50% { opacity: .3; }
+
+      100% {
+        opacity: 0;
+        transform:
+          translateX(130vw) rotate(-17deg);
+      }
+    }
+
+    @keyframes bbWash {
+      from { transform: scale(1.3); }
+      to { transform: scale(1); }
+    }
+
+    @keyframes bbBottom {
       to { opacity: 1; }
     }
 
-    #bbAnimeIntro.bbIntroExit {
-      opacity: 0;
-      pointer-events: none;
-    }
-
     @media (prefers-reduced-motion: reduce) {
-      #bbAnimeIntro *,
-      #bbAnimeIntro *::before,
-      #bbAnimeIntro *::after {
+      #bbAnimeIntro * {
         animation-duration: .01ms !important;
+        animation-delay: 0ms !important;
+      }
+
+      #bbAnimeIntro .bb-title,
+      #bbAnimeIntro .bb-number,
+      #bbAnimeIntro .bb-bottom {
+        opacity: 1 !important;
+        transform: none !important;
       }
     }
   `;
 
-  document.head.appendChild(css);
-  document.body.appendChild(intro);
+  document.head.appendChild(style);
+  document.body.appendChild(layer);
 
-  const letters = intro.querySelector(".bbIntroLetters");
-  const number = intro.querySelector("#bbIntroNumber");
-  const progress = intro.querySelector("#bbIntroProgress");
-  const flash = intro.querySelector(".bbIntroFlash");
+  const field = layer.querySelector(".bb-type-field");
 
-  const word = "BOOSTBALL";
+  const pieces = [
+    ["B", "-90vw", "-50vh", "85vw", "-25vh", "-18deg"],
+    ["O", "100vw", "-65vh", "-90vw", "40vh", "15deg"],
+    ["O", "-85vw", "60vh", "100vw", "-30vh", "-25deg"],
+    ["S", "100vw", "55vh", "-95vw", "-30vh", "20deg"],
+    ["T", "-100vw", "-60vh", "95vw", "40vh", "-12deg"],
+    ["B", "90vw", "-45vh", "-80vw", "60vh", "16deg"],
+    ["A", "-90vw", "50vh", "90vw", "-40vh", "-15deg"],
+    ["L", "85vw", "50vh", "-95vw", "-30vh", "19deg"],
+    ["L", "-85vw", "-60vh", "85vw", "30vh", "-19deg"]
+  ];
 
-  [...word].forEach((character, index) => {
-    const span = document.createElement("span");
+  if (!reduce) {
+    pieces.forEach(([letter, sx, sy, ex, ey, rot], i) => {
+      const node = document.createElement("span");
 
-    span.className = "bbIntroLetter";
-    if (index >= 5) span.classList.add("accent");
+      node.className =
+        "bb-fly" + (i % 3 === 1 ? " alt" : "");
 
-    span.textContent = character;
-    span.style.animationDelay = `${0.3 + index * 0.13}s`;
+      node.textContent = letter;
 
-    letters.appendChild(span);
-  });
+      node.style.setProperty("--sx", sx);
+      node.style.setProperty("--sy", sy);
+      node.style.setProperty("--ex", ex);
+      node.style.setProperty("--ey", ey);
+      node.style.setProperty("--rot", rot);
+      node.style.setProperty("--delay", `${.15 + i * .205}s`);
+      node.style.setProperty("--dur", ".9s");
 
-  // Impact flashes timed to the letter drops.
-  [0.65, 1.17, 1.69].forEach(seconds => {
-    setTimeout(() => {
-      flash.classList.remove("active");
-      void flash.offsetWidth;
-      flash.classList.add("active");
-    }, seconds * 1000);
-  });
+      field.appendChild(node);
+    });
+  }
 
-  // Wind-up counter: starts after the letters arrive.
-  const startTime = performance.now() + 1650;
-  const duration = 1450;
+  const count = layer.querySelector("#bbCount");
 
-  function animateCounter(now) {
-    const elapsed = Math.max(0, now - startTime);
-    const t = Math.min(elapsed / duration, 1);
+  const start = performance.now() + (reduce ? 0 : 3200);
+  const duration = reduce ? 200 : 1250;
 
-    // Slow beginning, rapid wind-up, then snap to 100.
-    const eased = t < .7
-      ? 0.7 * Math.pow(t / .7, 2.3)
-      : .7 + .3 * (1 - Math.pow((1 - t) / .3, 3));
+  function tick(now) {
+    const t = Math.max(
+      0,
+      Math.min(1, (now - start) / duration)
+    );
 
-    const value = Math.min(100, Math.floor(eased * 100));
+    const value = Math.round(
+      100 * (1 - Math.pow(1 - t, 3))
+    );
 
-    number.textContent = String(value).padStart(3, "0");
-    progress.style.width = `${value}%`;
+    count.textContent =
+      String(value).padStart(3, "0");
 
     if (t < 1) {
-      requestAnimationFrame(animateCounter);
-    } else {
-      number.textContent = "100";
-      progress.style.width = "100%";
+      requestAnimationFrame(tick);
     }
   }
 
-  requestAnimationFrame(animateCounter);
+  requestAnimationFrame(tick);
 
-  // Exit after the sequence finishes.
+  const total = reduce ? 1100 : 5100;
+
   setTimeout(() => {
-    intro.classList.add("bbIntroExit");
+    layer.classList.add("bb-out");
 
     setTimeout(() => {
-      intro.remove();
-      css.remove();
-    }, 650);
-  }, 3700);
+      layer.remove();
+      style.remove();
+    }, 500);
+  }, total);
 })();
