@@ -256,14 +256,6 @@ async function run(action) {
   }
 }
 
-  try {
-    await action();
-    status("");
-  } catch (error) {
-    console.error("Boostball authentication:", error);
-    status(error.message || "Authentication failed.");
-  }
-
 el("bbSignUp").onclick = () => run(async () => {
   const username = el("bbUsername").value.trim();
   const email = el("bbEmail").value.trim();
