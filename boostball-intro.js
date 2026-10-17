@@ -1,38 +1,69 @@
 
-/* BOOSTBALL — MONOCHROME INTRO */
+/*
+  BOOSTBALL — MONOCHROME TITLE OPENING
+  Plays once per tab session.
+  Refreshing the same tab skips it.
+*/
+
 (() => {
+  const SESSION_KEY = "boostball-intro-played-v2";
+
+  try {
+    if (sessionStorage.getItem(SESSION_KEY) === "yes") {
+      return;
+    }
+
+    sessionStorage.setItem(SESSION_KEY, "yes");
+  } catch (error) {
+    console.warn("Intro session storage unavailable:", error);
+  }
+
   if (document.getElementById("bbAnimeIntro")) return;
 
-  const reduce = window.matchMedia(
+  const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
-  const layer = document.createElement("div");
-  layer.id = "bbAnimeIntro";
-  layer.setAttribute(
-    "aria-label",
-    "Boost Ball loading animation"
-  );
+  const intro = document.createElement("div");
+  intro.id = "bbAnimeIntro";
 
-  layer.innerHTML = `
-    <div class="bb-wash"></div>
-    <div class="bb-swoosh bb-swoosh-a"></div>
-    <div class="bb-swoosh bb-swoosh-b"></div>
-    <div class="bb-type-field" aria-hidden="true"></div>
+  intro.innerHTML = `
+    <div class="bb-paper"></div>
 
-    <div class="bb-title">
-      <div class="bb-overline">WELCOME TO THE ARENA</div>
-      <div class="bb-word bb-boost">BOOST</div>
-      <div class="bb-word bb-ball">BALL</div>
-      <div class="bb-loading">L O A D I N G</div>
-      <div class="bb-number">
-        <span id="bbCount">000</span>
-        <span class="bb-percent">%</span>
+    <div class="bb-fragments" aria-hidden="true"></div>
+
+    <div class="bb-composition">
+      <div class="bb-heading">
+        <div class="bb-small-title">
+          THE CAR-SOCCER EXPERIENCE
+        </div>
+
+        <div class="bb-heading-row">
+          <span class="bb-title-grey">BOOST</span>
+          <span class="bb-title-black">BALL</span>
+        </div>
+
+        <div class="bb-heading-row bb-heading-second">
+          <span class="bb-title-black">LOADING</span>
+          <span class="bb-symbol">★</span>
+        </div>
       </div>
-      <div class="bb-bottom">READY TO ROLL?</div>
+
+      <div class="bb-big-number">
+        <span id="bbAnimeCount">000</span>
+        <span class="bb-pct">%</span>
+      </div>
+
+      <div class="bb-tiny-decoration">
+        <span>BOOST</span>
+        <span>★</span>
+        <span>BALL</span>
+      </div>
+
+      <div class="bb-ready">READY TO ROLL!</div>
     </div>
 
-    <div class="bb-final-flash"></div>
+    <div class="bb-white-impact"></div>
   `;
 
   const style = document.createElement("style");
@@ -42,240 +73,195 @@
       position: fixed;
       inset: 0;
       z-index: 2147483647;
+      background: #f7f7f7;
+      color: #171717;
       overflow: hidden;
-      display: grid;
-      place-items: center;
-      background: #e6e6e6;
-      color: #111;
-      font-family: Arial, Helvetica, sans-serif;
-      isolation: isolate;
+      font-family: Arial Black, Arial, sans-serif;
       pointer-events: auto;
-      opacity: 1;
-      transition: opacity .45s ease;
+      isolation: isolate;
     }
 
     #bbAnimeIntro * {
       box-sizing: border-box;
     }
 
-    #bbAnimeIntro .bb-wash {
+    #bbAnimeIntro .bb-paper {
       position: absolute;
-      inset: -15%;
-      background: radial-gradient(
-        ellipse at 50% 45%,
-        #fff 0%,
-        #ededed 45%,
-        #a8a8a8 100%
-      );
-      animation: bbWash 3.8s ease both;
+      inset: -10%;
+      background:
+        radial-gradient(
+          ellipse at center,
+          #ffffff 30%,
+          #f0f0f0 75%,
+          #d5d5d5 100%
+        );
     }
 
-    #bbAnimeIntro .bb-swoosh {
-      position: absolute;
-      width: 150vw;
-      height: 25vh;
-      left: -25vw;
-      top: 30%;
-      background: #333;
-      opacity: .14;
-      transform: rotate(-17deg) translateX(-140vw);
-      animation: bbSweep 1.3s ease-in-out both;
-    }
+    /*
+      OVERSIZED LETTER CUTS
+      These fill the frame before the title appears.
+    */
 
-    #bbAnimeIntro .bb-swoosh-b {
-      background: #999;
-      top: 65%;
-      height: 13vh;
-      animation-delay: .3s;
-    }
-
-    #bbAnimeIntro .bb-type-field {
+    #bbAnimeIntro .bb-fragments {
       position: absolute;
       inset: 0;
       overflow: hidden;
-      pointer-events: none;
-    }
-
-    #bbAnimeIntro .bb-fly {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      font-size: clamp(160px, 36vw, 560px);
-      font-weight: 1000;
-      line-height: .8;
-      letter-spacing: -.12em;
-      color: #777;
-      -webkit-text-stroke: 5px white;
-      paint-order: stroke fill;
-      text-shadow: 8px 9px 0 #111;
-      white-space: nowrap;
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(3);
-      animation:
-        bbFly var(--dur)
-        cubic-bezier(.22,.7,.22,1)
-        var(--delay) both;
-    }
-
-    #bbAnimeIntro .bb-fly.alt {
-      color: #111;
-      text-shadow: 8px 9px 0 #888;
-    }
-
-    #bbAnimeIntro .bb-title {
-      position: relative;
       z-index: 2;
-      width: min(94vw, 760px);
-      text-align: center;
-      opacity: 0;
-      transform: scale(1.4);
-      animation:
-        bbTitleEnter .7s
-        cubic-bezier(.12,.85,.18,1.1)
-        2.45s forwards;
     }
 
-    #bbAnimeIntro .bb-overline {
-      font-size: clamp(10px, 1.8vw, 16px);
-      letter-spacing: .4em;
-      color: #555;
-      font-weight: 900;
-      margin-bottom: 5px;
-    }
-
-    #bbAnimeIntro .bb-word {
-      font-weight: 1000;
-      font-size: clamp(72px, 15.5vw, 170px);
-      line-height: .76;
-      letter-spacing: -.09em;
-      color: #777;
-      -webkit-text-stroke: 3px white;
-      paint-order: stroke fill;
-      text-shadow:
-        5px 5px 0 #111,
-        9px 9px 0 #aaa;
-      white-space: nowrap;
-    }
-
-    #bbAnimeIntro .bb-boost {
-      transform: translateX(-3%);
-    }
-
-    #bbAnimeIntro .bb-ball {
-      color: #111;
-      transform: translateX(5%);
-      position: relative;
-      text-shadow:
-        5px 5px 0 #777,
-        9px 9px 0 white;
-    }
-
-    #bbAnimeIntro .bb-loading {
-      display: inline-block;
-      margin-top: 22px;
-      font-weight: 1000;
-      letter-spacing: .4em;
-      font-size: clamp(12px, 2.3vw, 21px);
-      color: #111;
-      background: #fff;
-      padding: 3px 12px;
-    }
-
-    #bbAnimeIntro .bb-number {
-      font-weight: 1000;
-      line-height: 1;
-      font-size: clamp(100px, 22vw, 240px);
-      letter-spacing: -.1em;
-      font-variant-numeric: tabular-nums;
-      color: #111;
-      -webkit-text-stroke:
-        clamp(2px, .5vw, 6px) #fff;
-      paint-order: stroke fill;
-      filter: drop-shadow(6px 7px 0 #888);
-      transform: scale(.55) rotate(-6deg);
-      opacity: 0;
-      animation:
-        bbNumberPop .55s
-        cubic-bezier(.16,1.3,.28,1)
-        3.05s forwards;
-    }
-
-    #bbAnimeIntro .bb-percent {
-      font-size: .32em;
-      vertical-align: top;
-      letter-spacing: 0;
-      margin-left: .12em;
-      color: #777;
-    }
-
-    #bbAnimeIntro .bb-bottom {
-      font-weight: 900;
-      letter-spacing: .36em;
-      font-size: clamp(10px, 1.8vw, 14px);
-      color: #555;
-      opacity: 0;
-      animation: bbBottom .35s 4.1s forwards;
-    }
-
-    #bbAnimeIntro .bb-final-flash {
+    #bbAnimeIntro .bb-fragment {
       position: absolute;
-      inset: 0;
-      background: #fff;
+      display: block;
+      font-family: Arial Black, Arial, sans-serif;
+      font-size: clamp(300px, 75vw, 1150px);
+      font-weight: 1000;
+      line-height: .75;
+      letter-spacing: -.13em;
+      white-space: nowrap;
+      color: #858585;
+      -webkit-text-stroke: 3px #fff;
+      paint-order: stroke fill;
       opacity: 0;
-      pointer-events: none;
-      animation: bbFinalFlash .35s 2.38s both;
+      will-change: transform, opacity;
+      animation:
+        bbFragmentCut .34s steps(1, end) both;
+      animation-delay: var(--at);
     }
 
-    #bbAnimeIntro.bb-out {
-      opacity: 0;
-      pointer-events: none;
+    #bbAnimeIntro .bb-fragment.dark {
+      color: #111;
     }
 
-    @keyframes bbFly {
+    #bbAnimeIntro .bb-fragment.light {
+      color: #b7b7b7;
+    }
+
+    @keyframes bbFragmentCut {
       0% {
         opacity: 0;
-        transform: translate(
-          calc(-50% + var(--sx)),
-          calc(-50% + var(--sy))
-        ) scale(3.2) rotate(var(--rot));
+        transform:
+          translate(var(--from-x), var(--from-y))
+          rotate(var(--angle))
+          scale(1.55);
       }
 
-      15% { opacity: 1; }
-
-      58% {
+      12% {
         opacity: 1;
         transform:
-          translate(-50%, -50%)
-          scale(1.05) rotate(0deg);
+          translate(var(--to-x), var(--to-y))
+          rotate(var(--angle))
+          scale(1);
       }
 
-      74% {
+      80% {
         opacity: 1;
         transform:
-          translate(-50%, -50%)
-          scale(.95) rotate(3deg);
+          translate(var(--to-x), var(--to-y))
+          rotate(var(--angle))
+          scale(1);
       }
 
       100% {
         opacity: 0;
-        transform: translate(
-          calc(-50% + var(--ex)),
-          calc(-50% + var(--ey))
-        ) scale(2.2) rotate(-9deg);
+        transform:
+          translate(var(--to-x), var(--to-y))
+          rotate(var(--angle))
+          scale(1);
       }
     }
 
-    @keyframes bbTitleEnter {
+    /*
+      COMPACT, LAYERED TITLE
+    */
+
+    #bbAnimeIntro .bb-composition {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 3;
+      padding: 5vw;
+      transform: translateY(-2vh);
+    }
+
+    #bbAnimeIntro .bb-heading {
+      position: relative;
+      width: min(92vw, 780px);
+      opacity: 0;
+      transform: scale(1.9) rotate(-4deg);
+      animation:
+        bbTitleSnap .4s
+        cubic-bezier(.15,.85,.2,1)
+        2.18s forwards;
+    }
+
+    #bbAnimeIntro .bb-small-title {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      font-size: clamp(9px, 1.6vw, 15px);
+      font-weight: 900;
+      letter-spacing: .15em;
+      color: #777;
+      margin-bottom: 5px;
+    }
+
+    #bbAnimeIntro .bb-heading-row {
+      display: flex;
+      justify-content: center;
+      align-items: baseline;
+      gap: .04em;
+      font-size: clamp(54px, 13vw, 145px);
+      font-weight: 1000;
+      letter-spacing: -.105em;
+      line-height: .88;
+      white-space: nowrap;
+    }
+
+    #bbAnimeIntro .bb-heading-second {
+      font-size: clamp(43px, 10vw, 112px);
+      margin-top: -.02em;
+      transform: translateX(5%);
+    }
+
+    #bbAnimeIntro .bb-title-grey {
+      color: #8e8e8e;
+    }
+
+    #bbAnimeIntro .bb-title-black {
+      color: #161616;
+    }
+
+    #bbAnimeIntro .bb-symbol {
+      color: #a1a1a1;
+      font-size: .5em;
+      margin-left: .1em;
+      transform: rotate(-15deg);
+    }
+
+    /*
+      THICK WHITE OUTLINES
+    */
+
+    #bbAnimeIntro .bb-title-grey,
+    #bbAnimeIntro .bb-title-black,
+    #bbAnimeIntro .bb-symbol {
+      -webkit-text-stroke:
+        clamp(2px, .65vw, 7px) #fff;
+      paint-order: stroke fill;
+      filter: drop-shadow(2px 3px 0 #bbb);
+    }
+
+    @keyframes bbTitleSnap {
       0% {
         opacity: 0;
-        transform: scale(1.6) rotate(-5deg);
-        filter: blur(10px);
+        transform: scale(1.9) rotate(-4deg);
       }
 
       65% {
         opacity: 1;
-        transform: scale(.96) rotate(1deg);
-        filter: blur(0);
+        transform: scale(.92) rotate(1deg);
       }
 
       100% {
@@ -284,139 +270,227 @@
       }
     }
 
-    @keyframes bbNumberPop {
+    /*
+      THE BIG 100% REVEAL
+    */
+
+    #bbAnimeIntro .bb-big-number {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      margin-top: -.02em;
+      font-size: clamp(125px, 28vw, 320px);
+      font-weight: 1000;
+      letter-spacing: -.14em;
+      line-height: .95;
+      color: #858585;
+      -webkit-text-stroke:
+        clamp(5px, 1.1vw, 13px) white;
+      paint-order: stroke fill;
+      filter: drop-shadow(5px 6px 0 #242424);
+      opacity: 0;
+      transform: scale(2.5) rotate(-8deg);
+      animation:
+        bbHundredImpact .45s
+        cubic-bezier(.13,.85,.2,1.2)
+        2.9s forwards;
+    }
+
+    #bbAnimeIntro #bbAnimeCount {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+
+    #bbAnimeIntro .bb-pct {
+      font-size: .26em;
+      letter-spacing: -.05em;
+      color: #111;
+      margin-left: .12em;
+      margin-top: .25em;
+    }
+
+    @keyframes bbHundredImpact {
       0% {
         opacity: 0;
-        transform: scale(.4) rotate(-12deg);
+        transform: scale(2.5) rotate(-8deg);
       }
 
       65% {
         opacity: 1;
-        transform: scale(1.13) rotate(3deg);
+        transform: scale(.9) rotate(2deg);
       }
 
       100% {
         opacity: 1;
-        transform: scale(1) rotate(-2deg);
+        transform: scale(1) rotate(0);
       }
     }
 
-    @keyframes bbFinalFlash {
-      0%, 100% { opacity: 0; }
-      48% { opacity: .8; }
+    #bbAnimeIntro .bb-tiny-decoration {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      font-size: clamp(10px, 2vw, 17px);
+      font-weight: 900;
+      letter-spacing: .25em;
+      color: #777;
+      opacity: 0;
+      animation: bbAppear .1s 3.35s forwards;
     }
 
-    @keyframes bbSweep {
-      0% {
-        opacity: 0;
-        transform:
-          translateX(-130vw) rotate(-17deg);
-      }
-
-      50% { opacity: .3; }
-
-      100% {
-        opacity: 0;
-        transform:
-          translateX(130vw) rotate(-17deg);
-      }
+    #bbAnimeIntro .bb-tiny-decoration span:nth-child(2) {
+      color: #111;
+      font-size: 1.5em;
     }
 
-    @keyframes bbWash {
-      from { transform: scale(1.3); }
-      to { transform: scale(1); }
+    #bbAnimeIntro .bb-ready {
+      margin-top: 12px;
+      font-size: clamp(10px, 1.8vw, 16px);
+      font-weight: 900;
+      letter-spacing: .35em;
+      opacity: 0;
+      animation: bbAppear .15s 4.1s forwards;
     }
 
-    @keyframes bbBottom {
+    @keyframes bbAppear {
       to { opacity: 1; }
     }
 
+    /*
+      FINAL WHITE FLASH
+    */
+
+    #bbAnimeIntro .bb-white-impact {
+      position: absolute;
+      inset: 0;
+      background: #fff;
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+      animation: bbImpact .25s 2.15s both;
+    }
+
+    @keyframes bbImpact {
+      0%, 100% { opacity: 0; }
+      40% { opacity: .95; }
+    }
+
+    #bbAnimeIntro.bb-exit {
+      animation: bbExit .35s forwards;
+    }
+
+    @keyframes bbExit {
+      to {
+        opacity: 0;
+        visibility: hidden;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
-      #bbAnimeIntro * {
-        animation-duration: .01ms !important;
-        animation-delay: 0ms !important;
+      #bbAnimeIntro .bb-fragments,
+      #bbAnimeIntro .bb-white-impact {
+        display: none;
       }
 
-      #bbAnimeIntro .bb-title,
-      #bbAnimeIntro .bb-number,
-      #bbAnimeIntro .bb-bottom {
-        opacity: 1 !important;
-        transform: none !important;
+      #bbAnimeIntro .bb-heading,
+      #bbAnimeIntro .bb-big-number,
+      #bbAnimeIntro .bb-tiny-decoration,
+      #bbAnimeIntro .bb-ready {
+        animation: none;
+        opacity: 1;
+        transform: none;
       }
     }
   `;
 
   document.head.appendChild(style);
-  document.body.appendChild(layer);
+  document.body.appendChild(intro);
 
-  const field = layer.querySelector(".bb-type-field");
+  const fragments = intro.querySelector(".bb-fragments");
 
-  const pieces = [
-    ["B", "-90vw", "-50vh", "85vw", "-25vh", "-18deg"],
-    ["O", "100vw", "-65vh", "-90vw", "40vh", "15deg"],
-    ["O", "-85vw", "60vh", "100vw", "-30vh", "-25deg"],
-    ["S", "100vw", "55vh", "-95vw", "-30vh", "20deg"],
-    ["T", "-100vw", "-60vh", "95vw", "40vh", "-12deg"],
-    ["B", "90vw", "-45vh", "-80vw", "60vh", "16deg"],
-    ["A", "-90vw", "50vh", "90vw", "-40vh", "-15deg"],
-    ["L", "85vw", "50vh", "-95vw", "-30vh", "19deg"],
-    ["L", "-85vw", "-60vh", "85vw", "30vh", "-19deg"]
+  // Each item represents one oversized typographic cut.
+  const cuts = [
+    ["B", "dark", "-38vw", "-32vh", "-15vw", "-12vh", "-12deg"],
+    ["O", "light", "25vw", "-25vh", "1vw", "-18vh", "8deg"],
+    ["O", "", "-30vw", "10vh", "-12vw", "-5vh", "-9deg"],
+    ["S", "dark", "30vw", "18vh", "0vw", "-8vh", "12deg"],
+    ["T", "light", "-35vw", "-28vh", "-8vw", "-14vh", "-15deg"],
+    ["B", "", "20vw", "-25vh", "-4vw", "-15vh", "6deg"],
+    ["A", "dark", "-30vw", "15vh", "-12vw", "-12vh", "-8deg"],
+    ["L", "light", "28vw", "12vh", "3vw", "-14vh", "9deg"],
+    ["L", "dark", "-35vw", "-30vh", "-12vw", "-18vh", "-11deg"]
   ];
 
-  if (!reduce) {
-    pieces.forEach(([letter, sx, sy, ex, ey, rot], i) => {
-      const node = document.createElement("span");
+  if (!reducedMotion) {
+    cuts.forEach((cut, i) => {
+      const [letter, tone, fx, fy, tx, ty, angle] = cut;
 
-      node.className =
-        "bb-fly" + (i % 3 === 1 ? " alt" : "");
+      const span = document.createElement("span");
+      span.className = `bb-fragment ${tone}`;
+      span.textContent = letter;
 
-      node.textContent = letter;
+      span.style.left = "35%";
+      span.style.top = "20%";
 
-      node.style.setProperty("--sx", sx);
-      node.style.setProperty("--sy", sy);
-      node.style.setProperty("--ex", ex);
-      node.style.setProperty("--ey", ey);
-      node.style.setProperty("--rot", rot);
-      node.style.setProperty("--delay", `${.15 + i * .205}s`);
-      node.style.setProperty("--dur", ".9s");
+      span.style.setProperty("--from-x", fx);
+      span.style.setProperty("--from-y", fy);
+      span.style.setProperty("--to-x", tx);
+      span.style.setProperty("--to-y", ty);
+      span.style.setProperty("--angle", angle);
+      span.style.setProperty("--at", `${.12 + i * .225}s`);
 
-      field.appendChild(node);
+      fragments.appendChild(span);
     });
   }
 
-  const count = layer.querySelector("#bbCount");
+  /*
+    COUNTER
+    The title's number appears first,
+    then rapidly winds up to 100.
+  */
 
-  const start = performance.now() + (reduce ? 0 : 3200);
-  const duration = reduce ? 200 : 1250;
+  const counter = intro.querySelector("#bbAnimeCount");
 
-  function tick(now) {
-    const t = Math.max(
-      0,
-      Math.min(1, (now - start) / duration)
-    );
+  function animateCount() {
+    const start = performance.now();
+    const duration = 1050;
 
-    const value = Math.round(
-      100 * (1 - Math.pow(1 - t, 3))
-    );
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
 
-    count.textContent =
-      String(value).padStart(3, "0");
+      // Accelerating wind-up, then sharp finish.
+      const value = Math.floor(
+        100 * (t * t * (3 - 2 * t))
+      );
 
-    if (t < 1) {
-      requestAnimationFrame(tick);
+      counter.textContent =
+        String(value).padStart(3, "0");
+
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        counter.textContent = "100";
+      }
     }
+
+    requestAnimationFrame(frame);
   }
 
-  requestAnimationFrame(tick);
+  if (reducedMotion) {
+    counter.textContent = "100";
+  } else {
+    setTimeout(animateCount, 3150);
+  }
 
-  const total = reduce ? 1100 : 5100;
-
+  // Reveal the existing login or main menu.
   setTimeout(() => {
-    layer.classList.add("bb-out");
+    intro.classList.add("bb-exit");
 
     setTimeout(() => {
-      layer.remove();
+      intro.remove();
       style.remove();
-    }, 500);
-  }, total);
+    }, 400);
+  }, reducedMotion ? 1000 : 4900);
 })();
