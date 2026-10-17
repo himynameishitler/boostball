@@ -3425,7 +3425,7 @@ function normalizeKey(
     }
 
 
-    return key.toLowerCase();
+    return typeof key === "string" ? key.toLowerCase() : "";
 }
 
 
