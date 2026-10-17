@@ -1,56 +1,51 @@
 
 /*
- BOOSTBALL ANIME INTRO v4
- Camera sweeps + letter impacts + final title slam
- Fast monochrome 000-100 counter
- Purple/blue reveal at 100
- Once per tab session
+ BOOSTBALL INTRO v5
+ Close-up typography -> camera movement -> full title drop
+ Fast grayscale counter -> purple/blue 100 reveal
+ Plays once per tab session
 */
 
 (() => {
   "use strict";
 
-  const SESSION_KEY = "boostball-intro-v4";
+  const KEY = "boostball-intro-v5-seen";
+
+  try {
+    if (sessionStorage.getItem(KEY) === "1") return;
+  } catch (e) {}
+
+  if (document.getElementById("bbAnimeIntro")) return;
+
   const reduced = matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
-
-  try {
-    if (sessionStorage.getItem(SESSION_KEY) === "played") {
-      return;
-    }
-  } catch (e) {
-    console.warn("Intro storage unavailable", e);
-  }
-
-  if (document.getElementById("bbAnimeIntro")) return;
 
   const root = document.createElement("div");
   root.id = "bbAnimeIntro";
 
   root.innerHTML = `
-    <div class="bb-camera" id="bbCamera">
-      <div class="bb-backdrop"></div>
-      <div class="bb-flying-letters" id="bbFlying"></div>
+    <div class="bb-world" id="bbWorld">
+      <div class="bb-closeups" id="bbCloseups"></div>
 
-      <div class="bb-title" id="bbFinalTitle">
-        <div class="bb-loading" id="bbLoading"></div>
+      <div class="bb-full-logo" id="bbFullLogo">
+        <div class="bb-top">LOADING</div>
 
-        <div class="bb-title-main">
-          <div class="bb-count" id="bbCount">
-            <span id="bbDigit1">0</span><span id="bbDigit2">0</span><span id="bbDigit3">0</span>
+        <div class="bb-logo-body">
+          <div class="bb-number" id="bbNumber">
+            <span id="bbN1">0</span><span id="bbN2">0</span><span id="bbN3">0</span>
             <small>%</small>
           </div>
 
-          <div class="bb-title-name">
-            <div class="bb-boost" id="bbBoost"></div>
-            <div class="bb-ball" id="bbBall"></div>
+          <div class="bb-words">
+            <div class="bb-boost">BOOST</div>
+            <div class="bb-ball">BALL</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="bb-impact-flash" id="bbFlash"></div>
+    <div class="bb-flash" id="bbFlash"></div>
   `;
 
   const css = document.createElement("style");
@@ -61,10 +56,15 @@
       inset: 0;
       z-index: 2147483647;
       overflow: hidden;
-      background: #edf2ff;
+      background: radial-gradient(
+        ellipse at center,
+        #fff 0%,
+        #f0f4ff 70%,
+        #dce5ff 100%
+      );
       font-family: Impact, "Arial Black", Arial, sans-serif;
-      isolation: isolate;
       pointer-events: all;
+      isolation: isolate;
       transition: opacity .4s ease;
     }
 
@@ -72,202 +72,194 @@
       box-sizing: border-box;
     }
 
-    #bbAnimeIntro .bb-camera {
+    #bbAnimeIntro .bb-world {
       position: absolute;
       inset: 0;
       transform-origin: center;
       will-change: transform;
     }
 
-    #bbAnimeIntro .bb-backdrop {
-      position: absolute;
-      inset: -30%;
-      background:
-        radial-gradient(
-          ellipse at center,
-          #fff 0%,
-          #f0f4ff 55%,
-          #d7e2ff 100%
-        );
-    }
+    /* CLOSE-UP LETTER SEQUENCE */
 
-    /* CAMERA SWEEPS */
-
-    #bbAnimeIntro .bb-camera.sweep-left {
-      animation: bbSweepLeft .42s ease-out both;
-    }
-
-    #bbAnimeIntro .bb-camera.sweep-right {
-      animation: bbSweepRight .42s ease-out both;
-    }
-
-    #bbAnimeIntro .bb-camera.sweep-tilt {
-      animation: bbSweepTilt .42s ease-out both;
-    }
-
-    @keyframes bbSweepLeft {
-      from {
-        transform: translate(15vw, -8vh)
-          rotate(8deg) scale(1.35);
-      }
-      to {
-        transform: translate(-5vw, 3vh)
-          rotate(-4deg) scale(1.12);
-      }
-    }
-
-    @keyframes bbSweepRight {
-      from {
-        transform: translate(-15vw, 9vh)
-          rotate(-9deg) scale(1.4);
-      }
-      to {
-        transform: translate(5vw, -3vh)
-          rotate(4deg) scale(1.12);
-      }
-    }
-
-    @keyframes bbSweepTilt {
-      from {
-        transform: translate(6vw, 12vh)
-          rotate(12deg) scale(1.45);
-      }
-      to {
-        transform: translate(-4vw, -3vh)
-          rotate(-5deg) scale(1.1);
-      }
-    }
-
-    /* CAMERA IMPACT */
-
-    #bbAnimeIntro .bb-camera.impact {
-      animation: bbCameraImpact .23s linear both;
-    }
-
-    @keyframes bbCameraImpact {
-      0% { transform: translate(0,0) rotate(0); }
-      18% { transform: translate(-7px,4px) rotate(-.4deg); }
-      35% { transform: translate(6px,-4px) rotate(.35deg); }
-      55% { transform: translate(-4px,2px); }
-      75% { transform: translate(2px,-1px); }
-      100% { transform: translate(0,0) rotate(0); }
-    }
-
-    /* INDIVIDUAL GIANT LETTERS */
-
-    #bbAnimeIntro .bb-flying-letters {
+    #bbAnimeIntro .bb-closeups {
       position: absolute;
       inset: 0;
       overflow: hidden;
     }
 
-    #bbAnimeIntro .bb-fly {
+    #bbAnimeIntro .bb-close-letter {
       position: absolute;
       left: 50%;
       top: 50%;
-      font-size: clamp(220px, 48vw, 740px);
+      font-size: clamp(360px, 92vw, 1450px);
       font-weight: 1000;
-      line-height: .8;
-      letter-spacing: -.1em;
-      color: #6426b9;
-      -webkit-text-stroke: 5px white;
+      line-height: .75;
+      letter-spacing: -.12em;
+      color: #6926be;
+      -webkit-text-stroke: 7px white;
       paint-order: stroke fill;
-      filter: drop-shadow(7px 9px 0 #344a88);
+      filter: drop-shadow(8px 12px 0 #397ff7);
       opacity: 0;
-      transform:
-        translate(-50%, -190vh)
-        rotate(-18deg) scale(1.7);
-      pointer-events: none;
+      white-space: nowrap;
+      transform-origin: center;
+      will-change: transform, opacity;
     }
 
-    #bbAnimeIntro .bb-fly.blue {
-      color: #387ef4;
-      filter: drop-shadow(7px 9px 0 #6d32b9);
+    #bbAnimeIntro .bb-close-letter.blue {
+      color: #397ff7;
+      filter: drop-shadow(8px 12px 0 #6926be);
     }
 
-    #bbAnimeIntro .bb-fly.land {
-      animation: bbFlyLand .42s
-        cubic-bezier(.13,.85,.2,1.1) forwards;
+    #bbAnimeIntro .bb-close-letter.enter {
+      animation: bbCloseEnter .4s
+        cubic-bezier(.12,.85,.18,1.1) forwards;
     }
 
-    #bbAnimeIntro .bb-fly.leave {
-      animation: bbFlyLeave .2s ease-in forwards;
-    }
-
-    @keyframes bbFlyLand {
+    @keyframes bbCloseEnter {
       0% {
         opacity: 1;
         transform:
-          translate(-50%, -190vh)
-          rotate(-18deg) scale(1.7);
+          translate(
+            calc(-50% + var(--start-x)),
+            calc(-50% + var(--start-y))
+          )
+          rotate(var(--angle))
+          scale(1.65);
       }
-      70% {
+
+      72% {
         opacity: 1;
         transform:
-          translate(-50%, -46%)
-          rotate(5deg) scale(1.08);
+          translate(
+            calc(-50% + var(--end-x)),
+            calc(-50% + var(--end-y))
+          )
+          rotate(var(--angle))
+          scale(.95);
       }
-      84% {
+
+      85% {
         transform:
-          translate(-50%, -54%)
-          rotate(-2deg) scale(.96);
+          translate(
+            calc(-50% + var(--end-x)),
+            calc(-50% + var(--end-y))
+          )
+          rotate(var(--angle))
+          scale(1.04);
       }
+
       100% {
         opacity: 1;
         transform:
-          translate(-50%, -50%)
-          rotate(0) scale(1);
+          translate(
+            calc(-50% + var(--end-x)),
+            calc(-50% + var(--end-y))
+          )
+          rotate(var(--angle))
+          scale(1);
       }
     }
 
-    @keyframes bbFlyLeave {
+    #bbAnimeIntro .bb-close-letter.leave {
+      opacity: 0;
+      transition: opacity .12s;
+    }
+
+    /* CAMERA MOVEMENT */
+
+    #bbAnimeIntro .bb-world.camera-left {
+      animation: bbCameraLeft .5s ease-out both;
+    }
+
+    #bbAnimeIntro .bb-world.camera-right {
+      animation: bbCameraRight .5s ease-out both;
+    }
+
+    #bbAnimeIntro .bb-world.camera-up {
+      animation: bbCameraUp .5s ease-out both;
+    }
+
+    @keyframes bbCameraLeft {
       from {
-        opacity: 1;
-        transform: translate(-50%,-50%) scale(1);
+        transform: translate(16vw, -5vh)
+          rotate(7deg) scale(1.4);
       }
       to {
-        opacity: 0;
-        transform:
-          translate(-85%,-30%)
-          rotate(-14deg) scale(1.7);
+        transform: translate(-7vw, 2vh)
+          rotate(-4deg) scale(1.12);
       }
     }
 
-    /* FINAL COMPOSITION */
+    @keyframes bbCameraRight {
+      from {
+        transform: translate(-16vw, 7vh)
+          rotate(-8deg) scale(1.4);
+      }
+      to {
+        transform: translate(7vw, -2vh)
+          rotate(4deg) scale(1.12);
+      }
+    }
 
-    #bbAnimeIntro .bb-title {
+    @keyframes bbCameraUp {
+      from {
+        transform: translate(5vw, 14vh)
+          rotate(9deg) scale(1.45);
+      }
+      to {
+        transform: translate(-3vw, -5vh)
+          rotate(-3deg) scale(1.1);
+      }
+    }
+
+    #bbAnimeIntro .bb-world.shake {
+      animation: bbShake .18s linear both;
+    }
+
+    @keyframes bbShake {
+      0% { transform: translate(0,0); }
+      20% { transform: translate(-5px,3px); }
+      40% { transform: translate(4px,-3px); }
+      60% { transform: translate(-3px,2px); }
+      80% { transform: translate(2px,-1px); }
+      100% { transform: translate(0,0); }
+    }
+
+    /* FINAL TITLE COMPOSITION */
+
+    #bbAnimeIntro .bb-full-logo {
       position: absolute;
       left: 50%;
       top: 50%;
-      width: min(96vw, 1450px);
+      width: min(96vw, 1500px);
+      opacity: 0;
       transform:
         translate(-50%, -180vh)
-        rotate(-7deg) scale(1.3);
-      opacity: 0;
-      will-change: transform;
+        rotate(-8deg) scale(1.35);
+      filter: drop-shadow(0 7px 2px #5671a633);
     }
 
-    #bbAnimeIntro .bb-title.drop {
-      animation: bbTitleDrop .65s
-        cubic-bezier(.16,.82,.23,1.04) forwards;
+    #bbAnimeIntro .bb-full-logo.drop {
+      animation: bbFullDrop .72s
+        cubic-bezier(.14,.82,.2,1.05) forwards;
     }
 
-    @keyframes bbTitleDrop {
+    @keyframes bbFullDrop {
       0% {
         opacity: 1;
         transform:
           translate(-50%, -180vh)
-          rotate(-7deg) scale(1.3);
+          rotate(-8deg) scale(1.35);
       }
-      67% {
+      68% {
         transform:
           translate(-50%, -43%)
-          rotate(2deg) scale(1.05,.89);
+          rotate(2deg) scale(1.04,.9);
       }
-      80% {
+      82% {
         transform:
           translate(-50%, -55%)
-          rotate(-1deg) scale(.98,1.05);
+          rotate(-1deg) scale(.98,1.04);
       }
       100% {
         opacity: 1;
@@ -277,119 +269,112 @@
       }
     }
 
-    #bbAnimeIntro .bb-loading {
-      display: flex;
-      justify-content: flex-start;
+    #bbAnimeIntro .bb-top {
+      font-size: clamp(40px, 9vw, 145px);
+      font-weight: 1000;
+      letter-spacing: -.07em;
+      line-height: .95;
       margin-left: 8%;
       margin-bottom: -1%;
-      font-size: clamp(38px, 8.3vw, 135px);
-      line-height: .95;
+      color: #6926be;
+      -webkit-text-stroke: 5px white;
+      paint-order: stroke fill;
     }
 
-    #bbAnimeIntro .bb-title-main {
+    #bbAnimeIntro .bb-logo-body {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 1%;
     }
 
-    #bbAnimeIntro .bb-count {
+    #bbAnimeIntro .bb-number {
       display: flex;
       align-items: baseline;
       flex: 0 0 auto;
-      font-size: clamp(85px, 22vw, 340px);
+      font-size: clamp(85px, 22vw, 350px);
       font-weight: 1000;
-      line-height: .88;
+      line-height: .9;
       letter-spacing: -.11em;
-      color: #444;
       font-variant-numeric: tabular-nums;
+      color: #222;
       transform-origin: center;
     }
 
-    #bbAnimeIntro .bb-count span {
+    #bbAnimeIntro .bb-number span {
       display: inline-block;
-      -webkit-text-stroke:
-        clamp(2px,.6vw,9px) white;
+      -webkit-text-stroke: 6px white;
       paint-order: stroke fill;
     }
 
-    #bbAnimeIntro .bb-count span:nth-child(2),
-    #bbAnimeIntro .bb-count span:nth-child(3) {
+    #bbAnimeIntro .bb-number span:nth-child(2),
+    #bbAnimeIntro .bb-number span:nth-child(3) {
       color: #888;
     }
 
-    #bbAnimeIntro .bb-count small {
+    #bbAnimeIntro .bb-number small {
       font-size: .27em;
       letter-spacing: 0;
-      margin-left: .1em;
-      color: #555;
+      margin-left: .08em;
+      color: #444;
       -webkit-text-stroke: 3px white;
       paint-order: stroke fill;
     }
 
-    #bbAnimeIntro .bb-count.complete {
-      animation: bbHundredPop .38s
-        cubic-bezier(.14,1.4,.25,1) both;
+    #bbAnimeIntro .bb-number.complete {
+      animation: bbPop .35s
+        cubic-bezier(.15,1.4,.2,1) both;
     }
 
-    #bbAnimeIntro .bb-count.complete span:first-child,
-    #bbAnimeIntro .bb-count.complete small {
+    #bbAnimeIntro .bb-number.complete span:first-child,
+    #bbAnimeIntro .bb-number.complete small {
       color: #6926be;
     }
 
-    #bbAnimeIntro .bb-count.complete span:nth-child(2),
-    #bbAnimeIntro .bb-count.complete span:nth-child(3) {
-      color: #387ff7;
+    #bbAnimeIntro .bb-number.complete span:nth-child(2),
+    #bbAnimeIntro .bb-number.complete span:nth-child(3) {
+      color: #397ff7;
     }
 
-    @keyframes bbHundredPop {
+    @keyframes bbPop {
       0% { transform: scale(1); }
-      45% { transform: scale(1.13) rotate(-2deg); }
+      50% { transform: scale(1.12) rotate(-2deg); }
       75% { transform: scale(.97) rotate(1deg); }
       100% { transform: scale(1); }
     }
 
-    #bbAnimeIntro .bb-title-name {
+    #bbAnimeIntro .bb-words {
       display: flex;
       flex: 1;
       min-width: 0;
       flex-direction: column;
       align-items: flex-start;
+      font-weight: 1000;
+      line-height: .85;
     }
 
     #bbAnimeIntro .bb-boost,
     #bbAnimeIntro .bb-ball {
-      display: flex;
       white-space: nowrap;
-      font-size: clamp(42px, 10.4vw, 165px);
-      font-weight: 1000;
-      line-height: .86;
-    }
-
-    #bbAnimeIntro .bb-ball {
-      margin-left: 5%;
-      font-size: clamp(46px, 11.2vw, 178px);
-    }
-
-    #bbAnimeIntro .bb-letter {
-      display: inline-block;
-      -webkit-text-stroke:
-        clamp(2px,.6vw,9px) white;
+      font-size: clamp(42px, 10.5vw, 170px);
+      letter-spacing: -.08em;
+      -webkit-text-stroke: 5px white;
       paint-order: stroke fill;
-      filter: drop-shadow(2px 4px 0 #ffffff);
     }
 
-    #bbAnimeIntro .bb-letter.purple {
+    #bbAnimeIntro .bb-boost {
       color: #6926be;
     }
 
-    #bbAnimeIntro .bb-letter.blue {
-      color: #387ff7;
+    #bbAnimeIntro .bb-ball {
+      color: #397ff7;
+      margin-left: 5%;
+      font-size: clamp(45px, 11.2vw, 185px);
     }
 
-    /* IMPACT FLASH */
+    /* FLASH AND EXIT */
 
-    #bbAnimeIntro .bb-impact-flash {
+    #bbAnimeIntro .bb-flash {
       position: absolute;
       inset: 0;
       background: white;
@@ -398,13 +383,13 @@
       z-index: 10;
     }
 
-    #bbAnimeIntro .bb-impact-flash.hit {
-      animation: bbFlash .16s ease-out;
+    #bbAnimeIntro .bb-flash.hit {
+      animation: bbFlash .14s ease-out;
     }
 
     @keyframes bbFlash {
-      0% { opacity: .26; }
-      100% { opacity: 0; }
+      from { opacity: .22; }
+      to { opacity: 0; }
     }
 
     #bbAnimeIntro.exit {
@@ -413,19 +398,16 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      #bbAnimeIntro .bb-camera,
-      #bbAnimeIntro .bb-title,
-      #bbAnimeIntro .bb-count {
-        animation: none !important;
-      }
-
-      #bbAnimeIntro .bb-title {
-        opacity: 1;
-        transform: translate(-50%,-50%);
-      }
-
-      #bbAnimeIntro .bb-flying-letters {
+      #bbAnimeIntro .bb-closeups {
         display: none;
+      }
+      #bbAnimeIntro .bb-full-logo {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+      #bbAnimeIntro .bb-world,
+      #bbAnimeIntro .bb-number {
+        animation: none !important;
       }
     }
   `;
@@ -434,191 +416,158 @@
   document.body.appendChild(root);
 
   const $ = selector => root.querySelector(selector);
-  const camera = $("#bbCamera");
-  const flying = $("#bbFlying");
+  const world = $("#bbWorld");
+  const closeups = $("#bbCloseups");
+  const logo = $("#bbFullLogo");
+  const number = $("#bbNumber");
   const flash = $("#bbFlash");
-  const title = $("#bbFinalTitle");
-  const count = $("#bbCount");
 
   const timers = [];
-  let counterFrame = 0;
+  let frameId = 0;
 
   function later(fn, ms) {
     timers.push(setTimeout(fn, ms));
   }
 
-  function restartAnimation(element, name) {
-    element.classList.remove(name);
+  function animateClass(element, className) {
+    element.classList.remove(className);
     void element.offsetWidth;
-    element.classList.add(name);
+    element.classList.add(className);
   }
 
-  function addWord(id, word, firstBlue = false) {
-    const parent = $(id);
-
-    [...word].forEach((letter, i) => {
-      const span = document.createElement("span");
-      const blue = (i % 2 === 0) === firstBlue;
-
-      span.className =
-        `bb-letter ${blue ? "blue" : "purple"}`;
-      span.textContent = letter;
-      parent.appendChild(span);
-    });
-  }
-
-  addWord("#bbLoading", "LOADING");
-  addWord("#bbBoost", "BOOST");
-  addWord("#bbBall", "BALL", true);
-
-  function impact(strength = 1) {
+  function shake() {
     if (reduced) return;
 
-    // Camera shake, followed by a white impact flash.
-    camera.classList.remove(
-      "sweep-left", "sweep-right", "sweep-tilt"
-    );
-
-    restartAnimation(camera, "impact");
-
-    if (strength > .5) {
-      restartAnimation(flash, "hit");
-    }
+    world.className = "bb-world";
+    animateClass(world, "shake");
+    animateClass(flash, "hit");
   }
 
-  function cameraSweep(index) {
+  function cameraMove(index) {
     if (reduced) return;
 
-    const sweeps = [
-      "sweep-left",
-      "sweep-right",
-      "sweep-tilt"
+    const movements = [
+      "camera-left",
+      "camera-right",
+      "camera-up"
     ];
 
-    camera.classList.remove(
-      "impact", ...sweeps
-    );
-
-    restartAnimation(
-      camera,
-      sweeps[index % sweeps.length]
-    );
+    world.className = "bb-world";
+    animateClass(world, movements[index % 3]);
   }
 
-  function flyLetter(letter, index, start) {
-    later(() => {
-      flying.textContent = "";
+  /*
+   Close-up sequence:
+   The camera moves across enormous characters.
+   Each one lands, shakes the screen,
+   then gives way to the next shot.
+  */
 
+  const shots = [
+    ["L", "-35vw", "-65vh", "-15vw", "-8vh", "-12deg"],
+    ["O", "35vw", "-70vh", "8vw", "-8vh", "9deg"],
+    ["A", "-40vw", "-60vh", "-10vw", "-5vh", "-8deg"],
+    ["D", "40vw", "-65vh", "8vw", "-8vh", "12deg"],
+    ["I", "-35vw", "-65vh", "-12vw", "-8vh", "-10deg"],
+    ["N", "35vw", "-65vh", "8vw", "-8vh", "8deg"],
+    ["G", "-40vw", "-65vh", "-10vw", "-8vh", "-12deg"]
+  ];
+
+  function showShot(shot, index, time) {
+    later(() => {
+      closeups.textContent = "";
+
+      const [letter, sx, sy, ex, ey, angle] = shot;
       const span = document.createElement("span");
+
       span.className =
-        `bb-fly ${index % 2 ? "blue" : ""}`;
+        "bb-close-letter" +
+        (index % 2 ? " blue" : "");
+
       span.textContent = letter;
 
-      flying.appendChild(span);
+      span.style.setProperty("--start-x", sx);
+      span.style.setProperty("--start-y", sy);
+      span.style.setProperty("--end-x", ex);
+      span.style.setProperty("--end-y", ey);
+      span.style.setProperty("--angle", angle);
 
-      cameraSweep(index);
-      restartAnimation(span, "land");
+      closeups.appendChild(span);
 
-      // The impact happens as the letter reaches the frame.
-      later(() => impact(.7), 275);
+      cameraMove(index);
+      animateClass(span, "enter");
 
-      later(() => {
-        span.classList.remove("land");
-        restartAnimation(span, "leave");
-      }, 455);
-    }, start);
+      later(shake, 275);
+      later(() => span.classList.add("leave"), 440);
+    }, time);
   }
 
-  function setCounter(value) {
+  function setCount(value) {
     const digits = String(value).padStart(3, "0");
 
-    $("#bbDigit1").textContent = digits[0];
-    $("#bbDigit2").textContent = digits[1];
-    $("#bbDigit3").textContent = digits[2];
+    $("#bbN1").textContent = digits[0];
+    $("#bbN2").textContent = digits[1];
+    $("#bbN3").textContent = digits[2];
   }
 
-  function windCounter() {
+  function countUp() {
     const start = performance.now();
-    const duration = 570; // Very fast wind-up.
+    const duration = 420;
 
-    function frame(now) {
+    function tick(now) {
       const t = Math.min(1, (now - start) / duration);
+      const value = Math.min(99, Math.floor(t * 100));
 
-      // Rapid acceleration, then a sharp final snap.
-      const eased = t < .8
-        ? .82 * Math.pow(t / .8, 1.45)
-        : .82 + .18 *
-          (1 - Math.pow((1 - t) / .2, 2));
-
-      const value = Math.min(
-        99,
-        Math.floor(eased * 100)
-      );
-
-      setCounter(value);
+      setCount(value);
 
       if (t < 1) {
-        counterFrame = requestAnimationFrame(frame);
+        frameId = requestAnimationFrame(tick);
       } else {
-        setCounter(100);
-        count.classList.add("complete");
-        impact(1);
+        setCount(100);
+        number.classList.add("complete");
+        shake();
       }
     }
 
-    counterFrame = requestAnimationFrame(frame);
+    frameId = requestAnimationFrame(tick);
   }
 
   function finish() {
     root.classList.add("exit");
 
     later(() => {
-      cancelAnimationFrame(counterFrame);
+      cancelAnimationFrame(frameId);
       timers.forEach(clearTimeout);
       root.remove();
       css.remove();
     }, 450);
   }
 
-  // =====================================================
-  // TIMELINE
-  // =====================================================
-
   if (reduced) {
-    setCounter(100);
-    count.classList.add("complete");
-    later(finish, 900);
+    setCount(100);
+    number.classList.add("complete");
+    later(finish, 950);
   } else {
-    // Close-up letters with camera sweeps.
-    const sequence = [
-      "B", "O", "O", "S", "T",
-      "B", "A", "L", "L"
-    ];
-
-    sequence.forEach((letter, i) => {
-      flyLetter(letter, i, 120 + i * 290);
+    shots.forEach((shot, index) => {
+      showShot(shot, index, 100 + index * 370);
     });
 
-    // Camera returns to centre for the full-title impact.
+    // Final full-title drop.
     later(() => {
-      flying.textContent = "";
-      camera.className = "bb-camera";
-      title.classList.add("drop");
+      closeups.textContent = "";
+      world.className = "bb-world";
+      logo.classList.add("drop");
+      later(shake, 475);
+    }, 2870);
 
-      // Full composition lands.
-      later(() => impact(1), 425);
-    }, 2850);
+    // Very fast grayscale counter.
+    later(countUp, 3760);
 
-    // Counter starts monochrome and winds rapidly.
-    later(windCounter, 3670);
-
-    // Hold the completed logo briefly.
-    later(finish, 5050);
+    // Hold the completed purple/blue title.
+    later(finish, 4900);
   }
 
   try {
-    sessionStorage.setItem(SESSION_KEY, "played");
-  } catch (e) {
-    console.warn("Unable to save intro session", e);
-  }
+    sessionStorage.setItem(KEY, "1");
+  } catch (e) {}
 })();
